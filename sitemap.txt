@@ -1,3 +1,4 @@
+http://example.com/2023/05/03/chat/
 http://example.com/2023/04/27/hello-world/
 http://example.com/about/index.html
 http://example.com/2023/04/27/1-plus/
