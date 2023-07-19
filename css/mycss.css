@@ -9,3 +9,11 @@
     /* 以下代表透明度为0.5 */
     background: rgba(255,255,255,.5);
 }
+/* 隐藏 Aplayer 的全局吸底音乐标签，在css中添加 */
+.aplayer.aplayer-fixed.aplayer-narrow .aplayer-body {
+    left: -66px !important
+}
+
+.aplayer.aplayer-fixed.aplayer-narrow .aplayer-body:hover {
+    left: 0 !important
+}
