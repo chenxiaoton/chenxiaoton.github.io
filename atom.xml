@@ -6,7 +6,7 @@
   <link href="http://example.com/atom.xml" rel="self"/>
   
   <link href="http://example.com/"/>
-  <updated>2023-07-17T11:13:49.250Z</updated>
+  <updated>2023-07-19T11:18:53.689Z</updated>
   <id>http://example.com/</id>
   
   <author>
@@ -15,6 +15,27 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>初探unlink</title>
+    <link href="http://example.com/2023/07/19/%E5%88%9D%E6%8E%A2unlink/"/>
+    <id>http://example.com/2023/07/19/%E5%88%9D%E6%8E%A2unlink/</id>
+    <published>2023-07-19T10:43:29.000Z</published>
+    <updated>2023-07-19T11:18:53.689Z</updated>
+    
+    <content type="html"><![CDATA[<p>本人呢也是刚学习unlink机制不久，但是最近有一点事情，所以隔了好几天才开始写。这次还是主要围绕着题来写，当然是初探，所以有很多细致的地方还是不太懂的。</p><p>在堆内存管理机制中，’unlink’操作是指把一个双向链表中的空闲堆块取，然后和目前物理相邻的 free chunk 进行合并。</p><p>这只是它的概念，其实不一定非得物理相邻。</p><p>咱们利用unlink的主要目的是将我们精心构造的堆块写进</p>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;p&gt;本人呢也是刚学习unlink机制不久，但是最近有一点事情，所以隔了好几天才开始写。这次还是主要围绕着题来写，当然是初探，所以有很多细致的地方还是不太懂的。&lt;/p&gt;
+&lt;p&gt;在堆内存管理机制中，’unlink’操作是指把一个双向链表中的空闲堆块取，然后和目前物理相邻的 free</summary>
+      
+    
+    
+    
+    
+  </entry>
   
   <entry>
     <title>初步探讨house of force</title>
